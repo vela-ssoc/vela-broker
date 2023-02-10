@@ -8,7 +8,9 @@ import (
 	"github.com/vela-ssoc/broker/libkit/credent"
 )
 
-type Issue struct{}
+type Issue struct {
+	Passwd []byte `json:"passwd"`
+}
 
 type Ident struct {
 	ID         int64     `json:"id"`         // ID

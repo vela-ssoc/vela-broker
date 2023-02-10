@@ -127,8 +127,7 @@ func (bn *brokerNode) Issue() Issue {
 }
 
 func (bn *brokerNode) Listener() net.Listener {
-	ln := &nopCloseListen{mux: bn.mux}
-	return ln
+	return bn.mux
 }
 
 func (bn *brokerNode) Reconnect(ctx context.Context) error {
@@ -178,7 +177,7 @@ func (bn *brokerNode) fetch(req *http.Request) (*http.Response, error) {
 func (bn *brokerNode) newRequest(ctx context.Context, op Operator, body io.Reader) *http.Request {
 	method := op.Method()
 	path := op.Path()
-	// Host 名字没有意义，有了 Host 才能检查通过
+	// Host 名字没有意义，但是如果不设置 Host ，http 标准库会检查报错
 	addr := &url.URL{Scheme: "http", Host: "soc", Path: path}
 	req := &http.Request{
 		Method:     method,
@@ -331,23 +330,16 @@ func (bn *brokerNode) join(ctx context.Context, conn net.Conn, srv *Server) erro
 		return exr
 	}
 
+	enc := make([]byte, 40960)
+	n, _ := res.Body.Read(enc)
 	var issue Issue
-	if err = json.NewDecoder(res.Body).Decode(&issue); err != nil {
+	if err = encipher.DecryptJSON(enc[:n], &issue); err != nil {
 		return err
 	}
 
 	bn.ident = ident
 	bn.issue = issue
-	bn.mux = spdy.Client(conn)
+	bn.mux = spdy.Client(conn, spdy.WithEncrypt(issue.Passwd))
 
 	return nil
 }
-
-type nopCloseListen struct {
-	mux spdy.Muxer
-}
-
-// Close 实现 net.Listener 接口，但不允许外部程序关闭
-func (ln *nopCloseListen) Close() error              { return nil }
-func (ln *nopCloseListen) Accept() (net.Conn, error) { return ln.mux.Accept() }
-func (ln *nopCloseListen) Addr() net.Addr            { return ln.mux.Addr() }

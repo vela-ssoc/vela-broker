@@ -19,7 +19,7 @@ var args struct {
 
 func main() {
 	parse() // parse 命令行参数
-	if banner.Print(); args.version {
+	if banner.Print(os.Stdout); args.version {
 		return
 	}
 
@@ -27,6 +27,7 @@ func main() {
 	cares := []os.Signal{syscall.SIGTERM, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGINT}
 	ctx, cancel := signal.NotifyContext(context.Background(), cares...)
 	defer cancel()
+	logger.Infof("按 Ctrl+C 结束运行")
 
 	if err := launch.Run(ctx, args.config, logger); err != nil {
 		logger.Warnf("程序运行错误：%v", err)
