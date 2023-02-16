@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/dfcfw/spdy"
-	"github.com/vela-ssoc/broker/infra/encipher"
 	"github.com/vela-ssoc/broker/infra/logback"
 	"github.com/vela-ssoc/broker/libkit/httpclient"
 )
@@ -68,18 +67,7 @@ func MustJoin(ctx context.Context, hide Hide, logger logback.Logger) (Broker, er
 	if len(hide.Servers) == 0 {
 		return nil, ErrRequiredServer
 	}
-	for _, srv := range hide.Servers {
-		addr := srv.Addr
-		_, port, err := net.SplitHostPort(addr)
-		if err == nil && port != "" {
-			continue
-		}
-		if srv.TLS {
-			srv.Addr = addr + ":443"
-		} else {
-			srv.Addr = addr + ":80"
-		}
-	}
+	hide.Servers.Format()
 
 	dial := newMustDial(hide.Servers, logger)
 	bn := &brokerNode{
@@ -238,11 +226,11 @@ func (bn *brokerNode) mustJoin(ctx context.Context) error {
 	bn.ctx, bn.cancel = context.WithCancel(ctx)
 	sleep := time.Second
 	for {
-		conn, srv, err := bn.dialer.MustDial(ctx, 3*time.Second, sleep)
+		conn, srv, err := bn.dialer.MustDial(ctx, 3*time.Second)
 		if err != nil {
 			return err
 		}
-		if err = bn.join(ctx, conn, srv); err == nil {
+		if err = bn.handshake(ctx, conn, srv); err == nil {
 			return nil
 		}
 		_ = conn.Close()
@@ -256,7 +244,7 @@ func (bn *brokerNode) mustJoin(ctx context.Context) error {
 	}
 }
 
-func (bn *brokerNode) join(ctx context.Context, conn net.Conn, srv *Server) error {
+func (bn *brokerNode) handshake(ctx context.Context, conn net.Conn, addr *Address) error {
 	ip := conn.LocalAddr().(*net.TCPAddr).IP
 	mac := bn.dialer.LookupMAC(ip)
 
@@ -285,17 +273,17 @@ func (bn *brokerNode) join(ctx context.Context, conn net.Conn, srv *Server) erro
 		ident.Username = cu.Username
 	}
 
-	data, err := encipher.EncryptJSON(&ident)
+	data, err := ident.Encrypt()
 	if err != nil {
 		return err
 	}
 	buf := bytes.NewReader(data)
 
-	host := srv.Name
+	host := addr.Name
 	if host == "" {
-		addr := srv.Addr
-		if idx := strings.LastIndex(addr, ":"); idx > -1 {
-			host = addr[:idx]
+		dest := addr.Addr
+		if idx := strings.LastIndex(dest, ":"); idx > -1 {
+			host = dest[:idx]
 		}
 	}
 
@@ -333,7 +321,7 @@ func (bn *brokerNode) join(ctx context.Context, conn net.Conn, srv *Server) erro
 	enc := make([]byte, 40960)
 	n, _ := res.Body.Read(enc)
 	var issue Issue
-	if err = encipher.DecryptJSON(enc[:n], &issue); err != nil {
+	if err = issue.Decrypt(enc[:n]); err != nil {
 		return err
 	}
 

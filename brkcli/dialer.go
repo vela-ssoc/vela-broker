@@ -10,11 +10,11 @@ import (
 )
 
 type mustDialer interface {
-	MustDial(ctx context.Context, timeout time.Duration, sleep time.Duration) (net.Conn, *Server, error)
+	MustDial(ctx context.Context, timeout time.Duration) (net.Conn, *Address, error)
 	LookupMAC(net.IP) net.HardwareAddr
 }
 
-func newMustDial(servers []*Server, logger logback.Logger) mustDialer {
+func newMustDial(servers Addresses, logger logback.Logger) mustDialer {
 	macs := make(map[string]net.HardwareAddr, len(servers))
 	dial := &tls.Dialer{NetDialer: new(net.Dialer)}
 
@@ -30,11 +30,12 @@ type ringDial struct {
 	logger logback.Logger
 	dialer *tls.Dialer
 	macs   map[string]net.HardwareAddr
-	dest   []*Server
+	dest   Addresses
 	index  int
 }
 
-func (dl *ringDial) MustDial(ctx context.Context, timeout, sleep time.Duration) (net.Conn, *Server, error) {
+func (dl *ringDial) MustDial(ctx context.Context, timeout time.Duration) (net.Conn, *Address, error) {
+	begin := time.Now()
 	for {
 		srv := dl.dest[dl.index]
 		conn, err := dl.dial(ctx, srv, timeout)
@@ -43,6 +44,7 @@ func (dl *ringDial) MustDial(ctx context.Context, timeout, sleep time.Duration) 
 			return conn, srv, nil
 		}
 
+		sleep := dl.sleepN(begin)
 		dl.logger.Infof("连接服务器 [%s] 失败，%s 后重新连接：%v", srv, sleep, err)
 
 		select {
@@ -83,7 +85,7 @@ func (dl *ringDial) LookupMAC(ip net.IP) net.HardwareAddr {
 	return mac
 }
 
-func (dl *ringDial) dial(parent context.Context, srv *Server, timeout time.Duration) (net.Conn, error) {
+func (dl *ringDial) dial(parent context.Context, srv *Address, timeout time.Duration) (net.Conn, error) {
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 
@@ -92,5 +94,17 @@ func (dl *ringDial) dial(parent context.Context, srv *Server, timeout time.Durat
 		return dl.dialer.DialContext(ctx, "tcp", srv.Addr)
 	} else {
 		return dl.dialer.NetDialer.DialContext(ctx, "tcp", srv.Addr)
+	}
+}
+
+func (*ringDial) sleepN(begin time.Time) time.Duration {
+	since := time.Since(begin)
+	switch {
+	case since > time.Hour:
+		return 10 * time.Second
+	case since > time.Minute:
+		return 3 * time.Second
+	default:
+		return time.Second
 	}
 }
