@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/vela-ssoc/broker/infra/encipher"
-	"github.com/vela-ssoc/broker/libkit/credent"
 )
 
 // Ident broker 节点握手认证时需要携带的信息
@@ -32,59 +31,11 @@ func (ident Ident) Encrypt() ([]byte, error) {
 	return encipher.EncryptJSON(ident)
 }
 
-// Issue 认证成功后返回的必要信息
-type Issue struct {
-	Passwd []byte `json:"passwd"` // 通信加密密钥
-}
-
-func (issue *Issue) Decrypt(data []byte) error {
-	return encipher.DecryptJSON(data, issue)
-}
-
-// Listen 本地服务监听配置
-type Listen struct {
-	Addr string `json:"addr"` // 监听地址 :8080 192.168.1.2:8080
-	Cert []byte `json:"cert"` // 证书
-	Pkey []byte `json:"pkey"` // 私钥
-}
-
-// Certifier 获取证书管理器
-// 返回值可以为 nil, nil
-// 当 error 为 nil 时说明没有错误
-// 当 credent.Certifier 为 nil 时说明没有 TLS 证书
-func (ln Listen) Certifier() (credent.Certifier, error) {
-	if len(ln.Cert) == 0 || len(ln.Pkey) == 0 {
-		return nil, nil
-	}
-
-	cert, err := credent.Single(ln.Cert, ln.Pkey)
-	if err != nil {
-		return nil, err
-	}
-
-	return cert, nil
-}
-
-type Logged struct {
-	Console bool `json:"console"`
-}
-
-type Database struct {
-	DSN string `json:"dsn"`
-}
-
-type Config struct {
-	Name     string   `json:"name"`
-	Listen   Listen   `json:"listen"`   // 监听配置
-	Logged   Logged   `json:"logged"`   // 日志配置
-	Database Database `json:"database"` // 数据库配置
-}
-
 type Hide struct {
-	ID      int64     `json:"id"`
-	Secret  string    `json:"secret"`
-	Semver  string    `json:"semver"`
-	Servers Addresses `json:"servers"`
+	ID      int64     `json:"id"`      // ID
+	Secret  string    `json:"secret"`  // 认证密钥
+	Semver  string    `json:"semver"`  // broker 版本
+	Servers Addresses `json:"servers"` // 地址
 }
 
 type Address struct {

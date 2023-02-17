@@ -23,15 +23,16 @@ func main() {
 		return
 	}
 
-	logger := logback.New()
+	// 初始化日志
+	slog := logback.Stdout()
 	cares := []os.Signal{syscall.SIGTERM, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGINT}
 	ctx, cancel := signal.NotifyContext(context.Background(), cares...)
 	defer cancel()
-	logger.Infof("按 Ctrl+C 结束运行")
+	slog.Infof("按 Ctrl+C 结束运行")
 
-	if err := launch.Run(ctx, args.config, logger); err != nil {
-		logger.Warnf("程序运行错误：%v", err)
+	if err := launch.Run(ctx, args.config, slog); err != nil {
+		slog.Warnf("程序运行错误：%v", err)
 	}
 
-	logger.Warnf("程序运行结束")
+	slog.Warnf("程序运行结束")
 }

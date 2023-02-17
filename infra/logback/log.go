@@ -1,88 +1,61 @@
 package logback
 
 import (
-	"fmt"
-	"log"
 	"os"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Logger interface {
-	Tracef(format string, args ...any)
-	Debugf(format string, args ...any)
-	Infof(format string, args ...any)
-	Warnf(format string, args ...any)
-	Errorf(format string, args ...any)
+	Trace(...any)
+	Debug(...any)
+	Info(...any)
+	Warn(...any)
+	Error(...any)
+	Tracef(string, ...any)
+	Debugf(string, ...any)
+	Infof(string, ...any)
+	Warnf(string, ...any)
+	Errorf(string, ...any)
+	Level() zapcore.Level
+	Replace(*zap.Logger)
 }
 
-type Replacer interface {
-	Logger
-	Replace(Logger)
-}
+func Stdout() Logger {
+	prod := zap.NewProductionEncoderConfig()
+	prod.EncodeTime = zapcore.ISO8601TimeEncoder
+	prod.EncodeLevel = zapcore.CapitalColorLevelEncoder
 
-func New() Replacer {
-	flag := log.LstdFlags | log.Lmicroseconds | log.Lshortfile
-	lg := log.New(os.Stdout, "", flag)
-	std := &stdlog{out: lg}
+	encoder := zapcore.NewConsoleEncoder(prod)
+	syncer := zapcore.AddSync(os.Stdout)
+	level := zapcore.DebugLevel
 
-	return &replaceable{logger: std}
-}
+	core := zapcore.NewCore(encoder, syncer, level)
 
-type replaceable struct {
-	logger Logger
-}
-
-func (r *replaceable) Replace(lg Logger) {
-	r.logger = lg
-}
-
-func (r *replaceable) Tracef(format string, args ...any) {
-	r.logger.Tracef(format, args...)
-}
-
-func (r *replaceable) Debugf(format string, args ...any) {
-	r.logger.Tracef(format, args...)
-}
-
-func (r *replaceable) Infof(format string, args ...any) {
-	r.logger.Infof(format, args...)
-}
-
-func (r *replaceable) Warnf(format string, args ...any) {
-	r.logger.Warnf(format, args...)
-}
-
-func (r *replaceable) Errorf(format string, args ...any) {
-	r.logger.Errorf(format, args...)
-}
-
-type stdlog struct {
-	out *log.Logger
-}
-
-func (l stdlog) output(level, format string, args ...any) {
-	if len(args) == 0 {
-		_ = l.out.Output(4, level+format)
-	} else {
-		_ = l.out.Output(4, fmt.Sprintf(level+format, args...))
+	opts := []zap.Option{
+		zap.WithCaller(true),
+		zap.AddStacktrace(zapcore.ErrorLevel),
+		zap.AddCallerSkip(1),
 	}
+	lg := zap.New(core, opts...)
+
+	return &sugarLog{sugar: lg.Sugar()}
 }
 
-func (l stdlog) Tracef(format string, args ...any) {
-	l.output("[T] ", format, args...)
+type sugarLog struct {
+	sugar *zap.SugaredLogger
 }
 
-func (l stdlog) Debugf(format string, args ...any) {
-	l.output("[D] ", format, args...)
-}
-
-func (l stdlog) Infof(format string, args ...any) {
-	l.output("[I] ", format, args...)
-}
-
-func (l stdlog) Warnf(format string, args ...any) {
-	l.output("[W] ", format, args...)
-}
-
-func (l stdlog) Errorf(format string, args ...any) {
-	l.output("[E] ", format, args...)
-}
+func (sg *sugarLog) Trace(v ...any)            { sg.sugar.Debug(v...) }
+func (sg *sugarLog) Debug(v ...any)            { sg.sugar.Debug(v...) }
+func (sg *sugarLog) Info(v ...any)             { sg.sugar.Info(v...) }
+func (sg *sugarLog) Warn(v ...any)             { sg.sugar.Warn(v...) }
+func (sg *sugarLog) Error(v ...any)            { sg.sugar.Error(v...) }
+func (sg *sugarLog) Tracef(s string, v ...any) { sg.sugar.Debugf(s, v...) }
+func (sg *sugarLog) Debugf(s string, v ...any) { sg.sugar.Debugf(s, v...) }
+func (sg *sugarLog) Infof(s string, v ...any)  { sg.sugar.Infof(s, v...) }
+func (sg *sugarLog) Warnf(s string, v ...any)  { sg.sugar.Warnf(s, v...) }
+func (sg *sugarLog) Errorf(s string, v ...any) { sg.sugar.Errorf(s, v...) }
+func (sg *sugarLog) Level() zapcore.Level      { return sg.sugar.Level() }
+func (sg *sugarLog) Replace(l *zap.Logger)     { sg.sugar = l.Sugar() }

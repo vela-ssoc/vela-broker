@@ -9,7 +9,7 @@ type Certifier interface { // Certifier
 	// https://github.com/golang/go/blob/76d39ae3499238ac7efb731f4f4cd47b1b3288ab/src/crypto/tls/common.go#L554-L563
 	Match(*tls.ClientHelloInfo) (*tls.Certificate, error)
 
-	// Replace 替换证书
+	// Replace 替换证书，能够在运行中替换升级证书
 	Replace(certPEMBlock, keyPEMBlock []byte) error
 }
 

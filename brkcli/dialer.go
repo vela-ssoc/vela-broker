@@ -14,12 +14,12 @@ type mustDialer interface {
 	LookupMAC(net.IP) net.HardwareAddr
 }
 
-func newMustDial(servers Addresses, logger logback.Logger) mustDialer {
+func newMustDial(servers Addresses, slog logback.Logger) mustDialer {
 	macs := make(map[string]net.HardwareAddr, len(servers))
 	dial := &tls.Dialer{NetDialer: new(net.Dialer)}
 
 	return &ringDial{
-		logger: logger,
+		logger: slog,
 		dialer: dial,
 		macs:   macs,
 		dest:   servers,
@@ -36,10 +36,11 @@ type ringDial struct {
 
 func (dl *ringDial) MustDial(ctx context.Context, timeout time.Duration) (net.Conn, *Address, error) {
 	begin := time.Now()
+	dsz := len(dl.dest)
 	for {
 		srv := dl.dest[dl.index]
+		dl.index = (dl.index + 1) % dsz
 		conn, err := dl.dial(ctx, srv, timeout)
-		dl.index = (dl.index + 1) % len(dl.dest)
 		if err == nil {
 			return conn, srv, nil
 		}

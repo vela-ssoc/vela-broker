@@ -50,11 +50,11 @@ type Broker interface {
 	// PostJSON 向中心端发送 JSON 数据，返回 JSON 数据
 	PostJSON(context.Context, Operator, any, any) error
 
-	FetchNonReturn(context.Context, Operator, io.Reader) error
+	Oneway(context.Context, Operator, io.Reader) error
 }
 
 // MustJoin 接入
-func MustJoin(ctx context.Context, hide Hide, logger logback.Logger) (Broker, error) {
+func MustJoin(ctx context.Context, hide Hide, slog logback.Logger) (Broker, error) {
 	if hide.ID == 0 {
 		return nil, ErrRequiredID
 	}
@@ -69,11 +69,11 @@ func MustJoin(ctx context.Context, hide Hide, logger logback.Logger) (Broker, er
 	}
 	hide.Servers.Format()
 
-	dial := newMustDial(hide.Servers, logger)
+	dial := newMustDial(hide.Servers, slog)
 	bn := &brokerNode{
 		hide:      hide,
 		dialer:    dial,
-		logger:    logger,
+		logger:    slog,
 		userAgent: "Broker-Client/" + hide.Semver,
 	}
 
@@ -130,7 +130,7 @@ func (bn *brokerNode) Fetch(ctx context.Context, op Operator, body io.Reader) (*
 	return bn.fetch(req)
 }
 
-func (bn *brokerNode) FetchNonReturn(ctx context.Context, op Operator, body io.Reader) error {
+func (bn *brokerNode) Oneway(ctx context.Context, op Operator, body io.Reader) error {
 	req := bn.newRequest(ctx, op, body)
 	res, err := bn.fetch(req)
 	if err == nil {
@@ -234,8 +234,8 @@ func (bn *brokerNode) mustJoin(ctx context.Context) error {
 			return nil
 		}
 		_ = conn.Close()
-
 		bn.logger.Infof("协议认证失败 %s 后重试：%s %v", sleep, srv, err)
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

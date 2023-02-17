@@ -15,7 +15,6 @@
 # vendor/
 
 .idea
-broker.json
+*.json
 
-zone/log
-zone/
+zone

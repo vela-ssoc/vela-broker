@@ -2,68 +2,70 @@ package launch
 
 import (
 	"context"
-	"net/http"
 	"os"
-	"time"
 
 	"github.com/vela-ssoc/broker/brkcli"
-	"github.com/vela-ssoc/broker/central"
+	"github.com/vela-ssoc/broker/guard"
 	"github.com/vela-ssoc/broker/infra/bootstrap"
 	"github.com/vela-ssoc/broker/infra/logback"
+	"github.com/vela-ssoc/broker/minister"
+	"go.uber.org/zap"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-func Run(parent context.Context, cfg string, logger logback.Replacer) error {
+// Run 运行服务
+func Run(parent context.Context, cfg string, slog logback.Logger) error {
 	var hide brkcli.Hide
 	if err := bootstrap.AutoLoad(cfg, os.Args[0], &hide); err != nil {
 		return err
 	}
 
-	brk, err := brkcli.MustJoin(parent, hide, logger)
+	brk, err := brkcli.MustJoin(parent, hide, slog)
 	if err != nil {
 		return err
 	}
+	issue := brk.Issue()
+	slog.Infof("broker 接入认证成功，下发的配置如下：\n%s", issue)
 
-	center := central.New()
+	zlg := issue.Logger.Zap()                           // 根据配置文件初始化日志
+	slog.Replace(zlg.WithOptions(zap.AddCallerSkip(1))) // 替换日志输出内核
 
-	for {
-		ctx, cancel := context.WithCancel(parent)
-		srv := &http.Server{Handler: center}
-		lis := brk.Listener()
-
-		go watch(ctx, brk, srv)
-
-		_ = srv.Serve(lis)
-		cancel()
-
-		if cex := parent.Err(); cex != nil {
-			return cex
-		}
-		if _ = brk.Reconnect(parent); err != nil {
-			return err
-		}
+	dbCfg := issue.Database
+	glg := logback.GORM(zlg, dbCfg.Level)
+	db, err := gorm.Open(mysql.Open(dbCfg.FormatDSN()), &gorm.Config{Logger: glg})
+	if err != nil {
+		return err
 	}
-}
-
-func watch(ctx context.Context, brk brkcli.Broker, srv *http.Server) {
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-
-	var failed int
-
-	for {
-		select {
-		case <-ctx.Done():
-			_ = srv.Close()
-			return
-		case <-ticker.C:
-			if err := brk.FetchNonReturn(ctx, brkcli.BrkPing, nil); err == nil {
-				failed = 0
-			} else {
-				if failed++; failed > 3 {
-					_ = srv.Close()
-					return
-				}
-			}
-		}
+	rawDB, err := db.DB()
+	if err != nil {
+		return err
 	}
+	rawDB.SetMaxIdleConns(dbCfg.MaxIdleConn)
+	rawDB.SetMaxOpenConns(dbCfg.MaxOpenConn)
+	rawDB.SetConnMaxLifetime(dbCfg.MaxLifeTime)
+	rawDB.SetConnMaxIdleTime(dbCfg.MaxIdleTime)
+
+	serve := minister.NewHandler()
+	lisCfg := issue.Listen
+	errCh := make(chan error, 1)
+	ds := &daemonServer{listen: lisCfg, handler: serve, errCh: errCh}
+	go ds.Run()
+
+	suborder := guard.NewHandler()
+	dc := &daemonClient{brk: brk, handler: suborder, errCh: errCh, slog: slog, parent: parent}
+	go dc.Run()
+
+	select {
+	case err = <-errCh:
+	case <-parent.Done():
+		err = parent.Err()
+	}
+
+	_ = ds.Close()
+	_ = dc.Close()
+	_ = rawDB.Close()
+	_ = zlg.Sync()
+
+	return err
 }
