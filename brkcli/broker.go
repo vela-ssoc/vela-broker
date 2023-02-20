@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/dfcfw/spdy"
+	"github.com/vela-ssoc/backend-common/httpclient"
 	"github.com/vela-ssoc/vela-broker/infra/logback"
-	"github.com/vela-ssoc/vela-broker/libkit/httpclient"
 )
 
 var (
