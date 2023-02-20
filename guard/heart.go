@@ -30,7 +30,7 @@ func (h *heart) Run() {
 		case <-h.ctx.Done():
 			return
 		case <-ticker.C:
-			_ = h.brk.Oneway(nil, brkcli.BrkPing, nil)
+			_ = h.brk.Oneway(nil, brkcli.OpPing, nil)
 		}
 	}
 }

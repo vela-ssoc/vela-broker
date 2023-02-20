@@ -287,7 +287,7 @@ func (bn *brokerNode) handshake(ctx context.Context, conn net.Conn, addr *Addres
 		}
 	}
 
-	req := bn.newRequest(ctx, brkJoin, buf)
+	req := bn.newRequest(ctx, opJoin, buf)
 	req.Host = host
 	req.URL.Host = host
 	if err = req.Write(conn); err != nil {

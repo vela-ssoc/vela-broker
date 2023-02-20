@@ -4,9 +4,9 @@ import "net/http"
 
 var (
 	// brkJoin broker 节点认证接入接口
-	brkJoin = &opera{method: http.MethodConnect, path: "/api/blink", desc: "认证握手"}
-	BrkPing = &opera{method: http.MethodGet, path: "/api/ping", desc: "PING 中心端"}
-	BrkStat = &opera{method: http.MethodPost, path: "/api/stat", desc: "信息采集上报"}
+	opJoin = &opera{method: http.MethodConnect, path: "/api/broker", desc: "认证握手"}
+	OpPing = &opera{method: http.MethodGet, path: "/api/ping", desc: "PING 中心端"}
+	OpStat = &opera{method: http.MethodPost, path: "/api/stat", desc: "信息采集上报"}
 )
 
 type Operator interface {
