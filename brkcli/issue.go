@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/vela-ssoc/broker/infra/encipher"
-	"github.com/vela-ssoc/broker/libkit/credent"
+	"github.com/vela-ssoc/vela-broker/infra/encipher"
+	"github.com/vela-ssoc/vela-broker/libkit/credent"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"

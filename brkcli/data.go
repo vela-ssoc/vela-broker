@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vela-ssoc/broker/infra/encipher"
+	"github.com/vela-ssoc/vela-broker/infra/encipher"
 )
 
 // Ident broker 节点握手认证时需要携带的信息

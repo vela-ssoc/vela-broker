@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/vela-ssoc/broker/infra/encipher"
+	"github.com/vela-ssoc/vela-broker/infra/encipher"
 )
 
 func AutoLoad(cfg, exe string, v any) error {

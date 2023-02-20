@@ -3,11 +3,9 @@ package guard
 import (
 	"runtime"
 
+	"github.com/vela-ssoc/backend-common/model"
+	"github.com/vela-ssoc/vela-broker/infra/logback"
 	"gorm.io/gorm"
-
-	"github.com/vela-ssoc/broker/infra/logback"
-
-	"github.com/vela-ssoc/broker/model"
 )
 
 type statTask struct {

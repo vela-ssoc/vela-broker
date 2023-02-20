@@ -5,9 +5,8 @@ import (
 	"crypto/tls"
 	"net/http"
 
-	"github.com/vela-ssoc/broker/infra/logback"
-
-	"github.com/vela-ssoc/broker/brkcli"
+	"github.com/vela-ssoc/vela-broker/brkcli"
+	"github.com/vela-ssoc/vela-broker/infra/logback"
 )
 
 type daemonServer struct {

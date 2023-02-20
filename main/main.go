@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/vela-ssoc/broker/infra/banner"
-	"github.com/vela-ssoc/broker/infra/logback"
-	"github.com/vela-ssoc/broker/launch"
+	"github.com/vela-ssoc/vela-broker/infra/banner"
+	"github.com/vela-ssoc/vela-broker/infra/logback"
+	"github.com/vela-ssoc/vela-broker/launch"
 )
 
 // args 命令行参数

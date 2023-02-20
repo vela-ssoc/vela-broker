@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/vela-ssoc/broker/brkcli"
+	"github.com/vela-ssoc/vela-broker/brkcli"
 )
 
 func newHeart(ctx context.Context, brk brkcli.Broker, du time.Duration) *heart {
