@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/vela-ssoc/vela-broker/infra/logback"
+	"github.com/vela-ssoc/backend-common/logback"
 )
 
 type mustDialer interface {

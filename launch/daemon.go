@@ -5,8 +5,8 @@ import (
 	"crypto/tls"
 	"net/http"
 
+	"github.com/vela-ssoc/backend-common/logback"
 	"github.com/vela-ssoc/vela-broker/brkcli"
-	"github.com/vela-ssoc/vela-broker/infra/logback"
 )
 
 type daemonServer struct {
@@ -17,7 +17,7 @@ type daemonServer struct {
 }
 
 func (ds *daemonServer) Run() {
-	cert, err := ds.listen.Certifier()
+	certs, err := ds.listen.Certifier()
 	if err != nil {
 		ds.errCh <- err
 		return
@@ -27,10 +27,8 @@ func (ds *daemonServer) Run() {
 		Addr:    ds.listen.Addr,
 		Handler: ds.handler,
 	}
-
-	if cert != nil {
-		cfg := &tls.Config{GetCertificate: cert.Match}
-		srv.TLSConfig = cfg
+	if len(certs) != 0 {
+		srv.TLSConfig = &tls.Config{Certificates: certs}
 		err = srv.ListenAndServeTLS("", "")
 	} else {
 		err = srv.ListenAndServe()

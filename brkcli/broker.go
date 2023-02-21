@@ -16,9 +16,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vela-ssoc/backend-common/logback"
+
 	"github.com/vela-ssoc/backend-common/httpclient"
 	"github.com/vela-ssoc/backend-common/spdy"
-	"github.com/vela-ssoc/vela-broker/infra/logback"
 )
 
 var (

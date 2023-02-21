@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/vela-ssoc/backend-common/logback"
 	"github.com/vela-ssoc/backend-common/model"
 	"github.com/vela-ssoc/backend-common/spdy"
 	"github.com/vela-ssoc/vela-broker/brkcli"
@@ -27,7 +28,7 @@ var (
 	ErrMinionOnline   = errors.New("节点已经在线")
 )
 
-func Hub(db *gorm.DB, issue brkcli.Issue, ident brkcli.Ident) Huber {
+func Hub(db *gorm.DB, issue brkcli.Issue, ident brkcli.Ident, slog logback.Logger) Huber {
 	section := container()
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -37,6 +38,7 @@ func Hub(db *gorm.DB, issue brkcli.Issue, ident brkcli.Ident) Huber {
 		section: section,
 		issue:   issue,
 		ident:   ident,
+		slog:    slog,
 	}
 }
 
@@ -46,6 +48,7 @@ type hub struct {
 	section subsection
 	issue   brkcli.Issue
 	ident   brkcli.Ident
+	slog    logback.Logger
 }
 
 func (hb *hub) Auth(ident Ident) (Issue, http.Header, bool, error) {
@@ -124,10 +127,11 @@ func (hb *hub) Join(tran net.Conn, ident Ident, issue Issue) error {
 	}
 	defer hb.section.del(id)
 
+	inet := ident.IP.String()
 	now := sql.NullTime{Valid: true, Time: time.Now()}
 	mon := &model.Minion{
 		ID:         id,
-		Inet:       ident.IP.String(),
+		Inet:       inet,
 		Status:     model.MinionOnline,
 		MAC:        ident.MAC,
 		Goos:       ident.Goos,
@@ -152,6 +156,8 @@ func (hb *hub) Join(tran net.Conn, ident Ident, issue Issue) error {
 			Where("status = ?", model.MinionOnline).
 			UpdateColumn("status", model.MinionOffline)
 	}()
+
+	hb.slog.Infof("minion 节点 %s 上线了", inet)
 
 	return nil
 }

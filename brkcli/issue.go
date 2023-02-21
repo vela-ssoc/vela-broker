@@ -1,13 +1,13 @@
 package brkcli
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"os"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/vela-ssoc/backend-common/encipher"
-	"github.com/vela-ssoc/vela-broker/libkit/credent"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -39,21 +39,18 @@ type Listen struct {
 	Pkey []byte `json:"pkey"` // 私钥
 }
 
-// Certifier 获取证书管理器
-// 返回值可以为 nil, nil
-// 当 error 为 nil 时说明没有错误
-// 当 credent.Certifier 为 nil 时说明没有 TLS 证书
-func (ln Listen) Certifier() (credent.Certifier, error) {
+// Certifier 初始化证书
+func (ln Listen) Certifier() ([]tls.Certificate, error) {
 	if len(ln.Cert) == 0 || len(ln.Pkey) == 0 {
 		return nil, nil
 	}
 
-	cert, err := credent.Single(ln.Cert, ln.Pkey)
+	cert, err := tls.X509KeyPair(ln.Cert, ln.Pkey)
 	if err != nil {
 		return nil, err
 	}
 
-	return cert, nil
+	return []tls.Certificate{cert}, nil
 }
 
 type Logger struct {

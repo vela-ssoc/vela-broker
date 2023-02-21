@@ -4,10 +4,10 @@ import (
 	"context"
 	"os"
 
+	"github.com/vela-ssoc/backend-common/logback"
+	"github.com/vela-ssoc/vela-broker/brkapi"
 	"github.com/vela-ssoc/vela-broker/brkcli"
-	"github.com/vela-ssoc/vela-broker/guard"
 	"github.com/vela-ssoc/vela-broker/infra/bootstrap"
-	"github.com/vela-ssoc/vela-broker/infra/logback"
 	"github.com/vela-ssoc/vela-broker/mlink"
 	"github.com/vela-ssoc/vela-broker/monapi"
 	"go.uber.org/zap"
@@ -22,6 +22,7 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 		return err
 	}
 
+	// 连接 manager 直至成功或取消
 	brk, err := brkcli.MustJoin(parent, hide, slog)
 	if err != nil {
 		return err
@@ -33,7 +34,7 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 	slog.Replace(zlg.WithOptions(zap.AddCallerSkip(1))) // 替换日志输出内核
 
 	dbCfg := issue.Database
-	glg := logback.GORM(zlg, dbCfg.Level)
+	glg := logback.Gorm(zlg, dbCfg.Level)
 	db, err := gorm.Open(mysql.Open(dbCfg.FormatDSN()), &gorm.Config{Logger: glg})
 	if err != nil {
 		return err
@@ -48,16 +49,17 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 	rawDB.SetConnMaxIdleTime(dbCfg.MaxIdleTime)
 
 	ident := brk.Ident()
-	hub := mlink.Hub(db, issue, ident)
+	hub := mlink.Hub(db, issue, ident, slog)
 	gateway := mlink.Gateway(hub)
 	_ = hub.ResetDB()
-	serve := monapi.NewHandler(gateway)
-	lisCfg := issue.Listen
+
 	errCh := make(chan error, 1)
-	ds := &daemonServer{listen: lisCfg, handler: serve, errCh: errCh}
+
+	serve := monapi.NewHandler(gateway)
+	ds := &daemonServer{listen: issue.Listen, handler: serve, errCh: errCh}
 	go ds.Run()
 
-	suborder := guard.NewHandler()
+	suborder := brkapi.NewHandler()
 	dc := &daemonClient{brk: brk, handler: suborder, errCh: errCh, slog: slog, parent: parent}
 	go dc.Run()
 

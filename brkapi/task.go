@@ -1,10 +1,10 @@
-package guard
+package brkapi
 
 import (
 	"runtime"
 
+	"github.com/vela-ssoc/backend-common/logback"
 	"github.com/vela-ssoc/backend-common/model"
-	"github.com/vela-ssoc/vela-broker/infra/logback"
 	"gorm.io/gorm"
 )
 
