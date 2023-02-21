@@ -73,7 +73,7 @@ func MustJoin(ctx context.Context, hide Hide, slog logback.Logger) (Broker, erro
 	bn := &brokerNode{
 		hide:      hide,
 		dialer:    dial,
-		logger:    slog,
+		slog:      slog,
 		userAgent: "Broker-Client/" + hide.Semver,
 	}
 
@@ -94,7 +94,7 @@ type brokerNode struct {
 	ident     Ident              // 认证信息
 	issue     Issue              // 认证返回信息
 	dialer    mustDialer         // TCP 连接器
-	logger    logback.Logger     // 日志输出
+	slog      logback.Logger     // 日志输出
 	client    httpclient.Client  // HTTP Client
 	mux       spdy.Muxer         // TCP 多路复用
 	userAgent string             // HTTP User-Agent
@@ -234,7 +234,7 @@ func (bn *brokerNode) mustJoin(ctx context.Context) error {
 			return nil
 		}
 		_ = conn.Close()
-		bn.logger.Infof("协议认证失败 %s 后重试：%s %v", sleep, srv, err)
+		bn.slog.Infof("协议认证失败 %s 后重试：%s %v", sleep, srv, err)
 
 		select {
 		case <-ctx.Done():

@@ -116,6 +116,8 @@ type Database struct {
 	Params      map[string]string `json:"params"        yaml:"params"`                                 // 参数
 }
 
+// FormatDSN formats the given Config into a DSN string
+// which can be passed to the driver.
 func (db Database) FormatDSN() string {
 	if dsn := db.DSN; dsn != "" {
 		return dsn
@@ -123,7 +125,7 @@ func (db Database) FormatDSN() string {
 
 	protocol := db.Net
 	if protocol == "" {
-		protocol = "tcp"
+		protocol = "tcp" // 不填写则默认 tcp 协议
 	}
 	cfg := &mysql.Config{
 		User:   db.User,
