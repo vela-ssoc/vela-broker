@@ -1,10 +1,14 @@
-package brkapi
+package monapi
 
 import (
 	"net/http"
 
 	"github.com/xgfone/ship/v5"
 )
+
+func newJoin(gateway http.Handler) *joinCtrl {
+	return &joinCtrl{gateway: gateway}
+}
 
 type joinCtrl struct {
 	gateway http.Handler

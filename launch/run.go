@@ -8,7 +8,8 @@ import (
 	"github.com/vela-ssoc/vela-broker/guard"
 	"github.com/vela-ssoc/vela-broker/infra/bootstrap"
 	"github.com/vela-ssoc/vela-broker/infra/logback"
-	"github.com/vela-ssoc/vela-broker/minister"
+	"github.com/vela-ssoc/vela-broker/mlink"
+	"github.com/vela-ssoc/vela-broker/monapi"
 	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -46,7 +47,11 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 	rawDB.SetConnMaxLifetime(dbCfg.MaxLifeTime)
 	rawDB.SetConnMaxIdleTime(dbCfg.MaxIdleTime)
 
-	serve := minister.NewHandler()
+	ident := brk.Ident()
+	hub := mlink.Hub(db, issue, ident)
+	gateway := mlink.Gateway(hub)
+	_ = hub.ResetDB()
+	serve := monapi.NewHandler(gateway)
 	lisCfg := issue.Listen
 	errCh := make(chan error, 1)
 	ds := &daemonServer{listen: lisCfg, handler: serve, errCh: errCh}
@@ -64,6 +69,7 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 
 	_ = ds.Close()
 	_ = dc.Close()
+	_ = hub.ResetDB()
 	_ = rawDB.Close()
 	_ = zlg.Sync()
 
