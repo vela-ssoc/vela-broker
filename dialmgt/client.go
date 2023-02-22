@@ -26,6 +26,7 @@ type brokerClient struct {
 	ident  Ident
 	issue  Issue
 	slog   logback.Logger
+	client httpclient.Client
 	dialer *iterDial
 	mux    spdy.Muxer
 	parent context.Context
@@ -37,6 +38,20 @@ func (bc *brokerClient) Hide() Hide           { return bc.hide }
 func (bc *brokerClient) Ident() Ident         { return bc.ident }
 func (bc *brokerClient) Issue() Issue         { return bc.issue }
 func (bc *brokerClient) Listen() net.Listener { return bc.mux }
+
+func (bc *brokerClient) Oneway(ctx context.Context, op Operator, body io.Reader) error {
+	res, err := bc.Call(ctx, op, body)
+	if err != nil {
+		return err
+	}
+	_ = res.Body.Close()
+	return nil
+}
+
+func (bc *brokerClient) Call(ctx context.Context, op Operator, body io.Reader) (*http.Response, error) {
+	req := bc.newRequest(ctx, op, body)
+	return bc.client.Fetch(req)
+}
 
 func (bc *brokerClient) Reconnect(parent context.Context) error {
 	_ = bc.close()
@@ -72,8 +87,8 @@ func (bc *brokerClient) dial(parent context.Context) error {
 		}
 
 		_ = conn.Close()
-		if err = parent.Err(); err != nil {
-			return err
+		if pe := parent.Err(); pe != nil {
+			return pe
 		}
 		if he, ok := err.(*httpclient.Error); ok && he.NotAcceptable() {
 			return err
@@ -93,7 +108,7 @@ func (bc *brokerClient) consult(parent context.Context, conn net.Conn, addr *Add
 		ID:     bc.hide.ID,
 		Secret: bc.hide.Secret,
 		Semver: bc.hide.Semver,
-		IP:     ip,
+		Inet:   ip,
 		MAC:    mac.String(),
 		Goos:   runtime.GOOS,
 		Arch:   runtime.GOARCH,
@@ -238,6 +253,13 @@ func (bc *brokerClient) newRequest(ctx context.Context, op Operator, body io.Rea
 	return req.WithContext(ctx)
 }
 
+func (bc *brokerClient) dialContext(_ context.Context, _, _ string) (net.Conn, error) {
+	if mux := bc.mux; mux != nil {
+		return mux.Dial()
+	}
+	return nil, io.ErrNoProgress
+}
+
 func (bc *brokerClient) heartbeat(du time.Duration) {
 	ticker := time.NewTicker(du)
 	defer ticker.Stop()
@@ -248,7 +270,9 @@ over:
 		case <-bc.parent.Done():
 			break over
 		case <-ticker.C:
-			bc.slog.Info("[TODO: 心跳包]")
+			if err := bc.Oneway(nil, OpPing, nil); err != nil {
+				bc.slog.Warnf("向 manager 发送心跳发生错误: %s", err)
+			}
 		}
 	}
 }

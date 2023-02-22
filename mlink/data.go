@@ -10,7 +10,7 @@ import (
 // Ident minion 节点握手认证时需要携带的信息
 type Ident struct {
 	Semver     string    `json:"semver"`     // 节点版本
-	IP         net.IP    `json:"ip"`         // 内网出口 IP
+	Inet       net.IP    `json:"inet"`       // 内网出口 IP
 	MAC        string    `json:"mac"`        // 出口 IP 所在网卡的 MAC 地址
 	Goos       string    `json:"goos"`       // 操作系统 runtime.GOOS
 	Arch       string    `json:"arch"`       // 操作系统架构 runtime.GOARCH

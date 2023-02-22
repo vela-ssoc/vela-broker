@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/vela-ssoc/backend-common/encipher"
-
 	"github.com/vela-ssoc/backend-common/model"
 )
 
@@ -21,7 +20,7 @@ type Ident struct {
 	ID         int64        `json:"id"`         // ID
 	Secret     string       `json:"secret"`     // 密钥
 	Semver     model.Semver `json:"semver"`     // 版本
-	IP         net.IP       `json:"ip"`         // IP 地址
+	Inet       net.IP       `json:"inet"`       // IPv4 地址
 	MAC        string       `json:"mac"`        // MAC 地址
 	Goos       string       `json:"goos"`       // runtime.GOOS
 	Arch       string       `json:"arch"`       // runtime.GOARCH

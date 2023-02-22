@@ -57,7 +57,7 @@ type hub struct {
 
 func (hb *hub) Auth(ident Ident) (Issue, http.Header, bool, error) {
 	var issue Issue
-	ip := ident.IP.To4()
+	ip := ident.Inet.To4()
 	if ip == nil || ip.IsLoopback() || ip.IsUnspecified() {
 		return issue, nil, false, ErrMinionBadInet
 	}
@@ -131,7 +131,7 @@ func (hb *hub) Join(tran net.Conn, ident Ident, issue Issue) error {
 	}
 	defer hb.section.del(id)
 
-	inet := ident.IP.String()
+	inet := ident.Inet.String()
 	now := sql.NullTime{Valid: true, Time: time.Now()}
 	mon := &model.Minion{
 		ID:         id,

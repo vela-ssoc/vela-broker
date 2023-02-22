@@ -3,9 +3,12 @@ package dialmgt
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
+	"net/http"
 	"time"
 
+	"github.com/vela-ssoc/backend-common/httpclient"
 	"github.com/vela-ssoc/backend-common/logback"
 )
 
@@ -15,6 +18,8 @@ type Linker interface {
 	Hide() Hide
 	Ident() Ident
 	Issue() Issue
+	Oneway(context.Context, Operator, io.Reader) error
+	Call(context.Context, Operator, io.Reader) (*http.Response, error)
 	Listen() net.Listener
 	Reconnect(context.Context) error
 }
@@ -32,6 +37,10 @@ func Dial(parent context.Context, hide Hide, slog logback.Logger) (Linker, error
 		slog:   slog,
 		dialer: dialer,
 	}
+	transport := &http.Transport{DialContext: bc.dialContext}
+	cli := &http.Client{Transport: transport}
+	bc.client = httpclient.NewClient(cli)
+
 	if err := bc.dial(parent); err != nil {
 		return nil, err
 	}

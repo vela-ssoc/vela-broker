@@ -51,7 +51,7 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 	rawDB.SetConnMaxLifetime(dbCfg.MaxLifeTime)
 	rawDB.SetConnMaxIdleTime(dbCfg.MaxIdleTime)
 
-	mon := monapi.Handler()
+	mon := monapi.Handler(db, link, slog)
 	hub := mlink.Hub(db, link, mon, slog)
 	gateway := mlink.Gateway(hub)
 	_ = hub.ResetDB()
@@ -63,7 +63,8 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 	ds := &daemonServer{listen: issue.Listen, handler: local, errCh: errCh}
 	go ds.Run()
 
-	suborder := brkapi.Handler()
+	// 连接 manager 的客户端，保持在线与接受指令
+	suborder := brkapi.Handler(hub)
 	dc := &daemonClient{link: link, handler: suborder, errCh: errCh, slog: slog, parent: parent}
 	go dc.Run()
 
