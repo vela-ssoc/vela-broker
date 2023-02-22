@@ -6,9 +6,11 @@ import (
 	"github.com/xgfone/ship/v5"
 )
 
-func NewHandler() http.Handler {
+func Handler() http.Handler {
 	sh := ship.Default()
-	sh.Route("/ping").GET(func(c *ship.Context) error {
+	group := sh.Group("/api")
+
+	group.Route("/ping").GET(func(c *ship.Context) error {
 		return c.Text(http.StatusOK, "server PONG")
 	})
 

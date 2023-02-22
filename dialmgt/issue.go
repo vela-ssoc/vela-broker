@@ -1,4 +1,4 @@
-package brkcli
+package dialmgt
 
 import (
 	"crypto/tls"

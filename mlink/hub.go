@@ -1,6 +1,7 @@
 package mlink
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"math/rand"
@@ -11,7 +12,7 @@ import (
 	"github.com/vela-ssoc/backend-common/logback"
 	"github.com/vela-ssoc/backend-common/model"
 	"github.com/vela-ssoc/backend-common/spdy"
-	"github.com/vela-ssoc/vela-broker/brkcli"
+	"github.com/vela-ssoc/vela-broker/dialmgt"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +29,10 @@ var (
 	ErrMinionOnline   = errors.New("节点已经在线")
 )
 
-func Hub(db *gorm.DB, issue brkcli.Issue, ident brkcli.Ident, slog logback.Logger) Huber {
+func Hub(db *gorm.DB, link dialmgt.Linker, handle http.Handler, slog logback.Logger) Huber {
+	if handle == nil {
+		handle = http.DefaultServeMux
+	}
 	section := container()
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -36,9 +40,9 @@ func Hub(db *gorm.DB, issue brkcli.Issue, ident brkcli.Ident, slog logback.Logge
 		db:      db,
 		random:  random,
 		section: section,
-		issue:   issue,
-		ident:   ident,
+		link:    link,
 		slog:    slog,
+		handle:  handle,
 	}
 }
 
@@ -46,8 +50,8 @@ type hub struct {
 	db      *gorm.DB
 	random  *rand.Rand
 	section subsection
-	issue   brkcli.Issue
-	ident   brkcli.Ident
+	link    dialmgt.Linker
+	handle  http.Handler
 	slog    logback.Logger
 }
 
@@ -80,8 +84,8 @@ func (hb *hub) Auth(ident Ident) (Issue, http.Header, bool, error) {
 			Workdir:    ident.Workdir,
 			Executable: ident.Executable,
 			JoinedAt:   now,
-			BrokerID:   hb.ident.ID,
-			BrokerName: hb.issue.Name,
+			BrokerID:   hb.link.Ident().ID,
+			BrokerName: hb.link.Issue().Name,
 		}
 		if err = hb.db.Create(join).Error; err != nil {
 			return issue, nil, false, err
@@ -145,8 +149,8 @@ func (hb *hub) Join(tran net.Conn, ident Ident, issue Issue) error {
 		Executable: ident.Executable,
 		PingedAt:   now,
 		JoinedAt:   now,
-		BrokerID:   hb.ident.ID,
-		BrokerName: hb.issue.Name,
+		BrokerID:   hb.link.Ident().ID,
+		BrokerName: hb.link.Issue().Name,
 	}
 	if err := hb.db.UpdateColumns(mon).Error; err != nil {
 		return err
@@ -158,14 +162,23 @@ func (hb *hub) Join(tran net.Conn, ident Ident, issue Issue) error {
 	}()
 
 	hb.slog.Infof("minion 节点 %s 上线了", inet)
+	srv := &http.Server{
+		Handler: hb.handle,
+		BaseContext: func(net.Listener) context.Context {
+			return context.WithValue(context.Background(), minionCtxKey, conn)
+		},
+	}
+	_ = srv.Serve(mux)
+	hb.slog.Warnf("minion 节点 %s 下线了", inet)
 
 	return nil
 }
 
 // ResetDB 将所有连接该 broker 的节点数据库状态改为离线
 func (hb *hub) ResetDB() error {
+	brk := hb.link.Ident()
 	return hb.db.Model(&model.Minion{}).
-		Where("broker_id = ? AND status = ?", hb.ident.ID, model.MinionOnline).
+		Where("broker_id = ? AND status = ?", brk.ID, model.MinionOnline).
 		UpdateColumn("status", model.MinionOffline).
 		Error
 }

@@ -6,14 +6,14 @@ import (
 	"net/http"
 
 	"github.com/vela-ssoc/backend-common/logback"
-	"github.com/vela-ssoc/vela-broker/brkcli"
+	"github.com/vela-ssoc/vela-broker/dialmgt"
 )
 
 type daemonServer struct {
-	listen  brkcli.Listen // 服务监听配置
-	handler http.Handler  // handler
-	server  *http.Server  // HTTP 服务
-	errCh   chan<- error  // 错误输出
+	listen  dialmgt.Listen // 服务监听配置
+	handler http.Handler   // handler
+	server  *http.Server   // HTTP 服务
+	errCh   chan<- error   // 错误输出
 }
 
 func (ds *daemonServer) Run() {
@@ -45,7 +45,7 @@ func (ds *daemonServer) Close() error {
 }
 
 type daemonClient struct {
-	brk     brkcli.Broker
+	link    dialmgt.Linker
 	handler http.Handler
 	server  *http.Server
 	errCh   chan<- error
@@ -60,7 +60,7 @@ func (dc *daemonClient) Run() {
 	dc.server = srv
 
 	for {
-		lis := dc.brk.Listener()
+		lis := dc.link.Listen()
 		_ = srv.Serve(lis)
 		dc.slog.Warn("与中心端的连接已断开")
 		if err := dc.parent.Err(); err != nil {
@@ -68,7 +68,7 @@ func (dc *daemonClient) Run() {
 			break
 		}
 		dc.slog.Info("正在准备重试连接中心端")
-		if err := dc.brk.Reconnect(dc.parent); err != nil {
+		if err := dc.link.Reconnect(dc.parent); err != nil {
 			dc.errCh <- err
 			break
 		}

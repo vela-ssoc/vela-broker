@@ -6,11 +6,11 @@ import (
 	"github.com/xgfone/ship/v5"
 )
 
-func NewHandler(gateway http.Handler) http.Handler {
+func Handler() http.Handler {
 	sh := ship.Default()
 	group := sh.Group("/api")
 
-	newJoin(gateway).BindRoute(group)
+	new(pingCtrl).BindRoute(group)
 
 	return sh
 }
