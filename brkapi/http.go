@@ -21,8 +21,8 @@ func Handler(hub mlink.Huber, slog logback.Logger) http.Handler {
 
 	group := sh.Group("/api")
 	route.Ping().RegRoute(group)
-	route.Syscmd().RegRoute(group)
-	route.Intom(hub).RegRoute(group)
+	route.Attach().RegRoute(group)
+	route.AttachMinion(hub, node).RegRoute(group)
 
 	return sh
 }

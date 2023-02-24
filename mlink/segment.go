@@ -5,10 +5,10 @@ import "sync"
 // container 初始化连接存放容器
 func container() subsection {
 	// 128 * 64 = 8192
-	const size = 128
+	const size = 2
 	buckets := make([]*bucket, size)
 	for i := 0; i < size; i++ {
-		buckets[i] = &bucket{elems: make(map[string]*connect, 64)}
+		buckets[i] = &bucket{elems: make(map[string]*connect, 4)}
 	}
 
 	return subsection{

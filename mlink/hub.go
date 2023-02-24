@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/vela-ssoc/backend-common/httpclient"
 	"github.com/vela-ssoc/backend-common/logback"
 	"github.com/vela-ssoc/backend-common/model"
@@ -32,6 +34,7 @@ type Huber interface {
 	BrkInet() net.IP
 	ResetDB() error
 	Forward(opurl.URLer, http.ResponseWriter, *http.Request)
+	Stream(op opurl.URLer) (*websocket.Conn, error)
 }
 
 var (
@@ -63,6 +66,7 @@ func Hub(db *gorm.DB, link dialmgt.Linker, handle http.Handler, slog logback.Log
 	hub.client = httpclient.NewClient(cli)
 	inet := link.Ident().Inet.String()
 	hub.proxy = pubrr.Forward(transport, "broker-"+inet)
+	hub.stream = pubrr.Stream(hub.dialContext)
 
 	return hub
 }
@@ -76,6 +80,7 @@ type minionHub struct {
 	slog    logback.Logger
 	client  httpclient.Client
 	proxy   pubrr.Forwarder
+	stream  pubrr.Streamer
 }
 
 func (hub *minionHub) Auth(ident Ident) (Issue, http.Header, bool, error) {
@@ -243,6 +248,10 @@ func (hub *minionHub) JSON(ctx context.Context, op opurl.URLer, body, reply any)
 
 func (hub *minionHub) Forward(op opurl.URLer, w http.ResponseWriter, r *http.Request) {
 	hub.proxy.Forward(op, w, r)
+}
+
+func (hub *minionHub) Stream(op opurl.URLer) (*websocket.Conn, error) {
+	return hub.stream.Stream(op)
 }
 
 func (*minionHub) newRequest(ctx context.Context, op opurl.URLer, body io.Reader) *http.Request {

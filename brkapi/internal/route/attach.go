@@ -13,18 +13,18 @@ import (
 	"github.com/xgfone/ship/v5"
 )
 
-func Syscmd() RegRouter {
-	return new(syscmdCtrl)
+func Attach() RegRouter {
+	return new(attachCtrl)
 }
 
-type syscmdCtrl struct{}
+type attachCtrl struct{}
 
-func (sc *syscmdCtrl) RegRoute(rgb *ship.RouteGroupBuilder) {
-	rgb.Route("/intob/syscmd").GET(sc.Syscmd)
-	rgb.Route("/intob/fs").GET(sc.FS)
+func (sc *attachCtrl) RegRoute(rgb *ship.RouteGroupBuilder) {
+	rgb.Route("/brr/syscmd").GET(sc.Syscmd)
+	rgb.Route("/brr/fs").GET(sc.FS)
 }
 
-func (sc *syscmdCtrl) Syscmd(c *ship.Context) error {
+func (sc *attachCtrl) Syscmd(c *ship.Context) error {
 	var req reqresp.Syscmd
 	if err := c.BindQuery(&req); err != nil {
 		return err
@@ -53,7 +53,7 @@ func (sc *syscmdCtrl) Syscmd(c *ship.Context) error {
 	return c.JSON(http.StatusOK, ret)
 }
 
-func (sc *syscmdCtrl) FS(c *ship.Context) error {
+func (sc *attachCtrl) FS(c *ship.Context) error {
 	str := c.Query("path", "/")
 	name := filepath.Clean(str)
 	open, err := os.Open(name)
