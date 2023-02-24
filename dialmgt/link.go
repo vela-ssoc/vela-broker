@@ -10,6 +10,7 @@ import (
 
 	"github.com/vela-ssoc/backend-common/httpclient"
 	"github.com/vela-ssoc/backend-common/logback"
+	"github.com/vela-ssoc/backend-common/opurl"
 )
 
 var ErrEmptyAddress = errors.New("服务端地址不能为空")
@@ -18,8 +19,8 @@ type Linker interface {
 	Hide() Hide
 	Ident() Ident
 	Issue() Issue
-	Oneway(context.Context, Operator, io.Reader) error
-	Call(context.Context, Operator, io.Reader) (*http.Response, error)
+	Oneway(context.Context, opurl.URLer, io.Reader) error
+	Call(context.Context, opurl.URLer, io.Reader) (*http.Response, error)
 	Listen() net.Listener
 	Reconnect(context.Context) error
 }

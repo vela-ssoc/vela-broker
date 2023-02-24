@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/user"
 	"runtime"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/vela-ssoc/backend-common/httpclient"
 	"github.com/vela-ssoc/backend-common/logback"
+	"github.com/vela-ssoc/backend-common/opurl"
 	"github.com/vela-ssoc/backend-common/spdy"
 )
 
@@ -39,7 +39,7 @@ func (bc *brokerClient) Ident() Ident         { return bc.ident }
 func (bc *brokerClient) Issue() Issue         { return bc.issue }
 func (bc *brokerClient) Listen() net.Listener { return bc.mux }
 
-func (bc *brokerClient) Oneway(ctx context.Context, op Operator, body io.Reader) error {
+func (bc *brokerClient) Oneway(ctx context.Context, op opurl.URLer, body io.Reader) error {
 	res, err := bc.Call(ctx, op, body)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func (bc *brokerClient) Oneway(ctx context.Context, op Operator, body io.Reader)
 	return nil
 }
 
-func (bc *brokerClient) Call(ctx context.Context, op Operator, body io.Reader) (*http.Response, error) {
+func (bc *brokerClient) Call(ctx context.Context, op opurl.URLer, body io.Reader) (*http.Response, error) {
 	req := bc.newRequest(ctx, op, body)
 	return bc.client.Fetch(req)
 }
@@ -139,7 +139,7 @@ func (bc *brokerClient) consult(parent context.Context, conn net.Conn, addr *Add
 		}
 	}
 
-	req := bc.newRequest(parent, opJoin, buf)
+	req := bc.newRequest(parent, opurl.BrkJoin, buf)
 	req.Host = host
 	req.URL.Host = host
 	if err = req.Write(conn); err != nil {
@@ -202,11 +202,9 @@ func (bc *brokerClient) dialSleep(ctx context.Context, start time.Time) {
 	}
 }
 
-func (bc *brokerClient) newRequest(ctx context.Context, op Operator, body io.Reader) *http.Request {
+func (bc *brokerClient) newRequest(ctx context.Context, op opurl.URLer, body io.Reader) *http.Request {
 	method := op.Method()
-	path := op.Path()
-	// Host 名字没有意义，但是如果不设置 Host ，http 标准库会检查报错
-	addr := &url.URL{Scheme: "http", Host: "soc", Path: path}
+	addr := op.URL()
 	req := &http.Request{
 		Method:     method,
 		URL:        addr,
@@ -270,7 +268,7 @@ over:
 		case <-bc.parent.Done():
 			break over
 		case <-ticker.C:
-			if err := bc.Oneway(nil, OpPing, nil); err != nil {
+			if err := bc.Oneway(nil, opurl.OpPing, nil); err != nil {
 				bc.slog.Warnf("向 manager 发送心跳发生错误: %s", err)
 			}
 		}

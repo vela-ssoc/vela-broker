@@ -15,7 +15,7 @@ type intomCtrl struct {
 }
 
 func (ic *intomCtrl) RegRoute(rgb *ship.RouteGroupBuilder) {
-	rgb.Route("/intom/:mid/*path").Any(ic.Warp(ic.Forward))
+	rgb.Route("/intom/:mid/*path").Any(ic.Into)
 }
 
 func (ic *intomCtrl) Warp(fn func(*ship.Context, string) error) ship.Handler {
@@ -25,12 +25,13 @@ func (ic *intomCtrl) Warp(fn func(*ship.Context, string) error) ship.Handler {
 	}
 }
 
-func (ic *intomCtrl) Forward(c *ship.Context, mid string) error {
+func (ic *intomCtrl) Into(c *ship.Context) error {
 	w, r := c.ResponseWriter(), c.Request()
 	query := r.URL.RawQuery
 	path := c.Param("path")
+	mid := c.Param("mid")
 
-	op := opurl.BrkIntom(c.Method(), mid, path).WithQuery(query)
+	op := opurl.BIntom(mid, c.Method(), path, query)
 	ic.hub.Forward(op, w, r)
 
 	return nil

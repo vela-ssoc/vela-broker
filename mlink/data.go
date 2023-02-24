@@ -3,7 +3,6 @@ package mlink
 import (
 	"bytes"
 	"net"
-	"net/url"
 	"time"
 
 	"github.com/vela-ssoc/backend-common/encipher"
@@ -61,13 +60,4 @@ func (jr *jsonReader) Len() int {
 
 func (jr *jsonReader) Close() error {
 	return nil
-}
-
-type Opera struct {
-	query url.Values
-}
-
-func (o Opera) WithQuery(q url.Values) Opera {
-	o.query = q
-	return o
 }
