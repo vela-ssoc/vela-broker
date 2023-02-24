@@ -14,6 +14,7 @@ type Infer interface {
 }
 
 type connect struct {
+	id    int64
 	ident Ident
 	issue Issue
 	mux   spdy.Muxer

@@ -2,12 +2,13 @@ package mlink
 
 import "sync"
 
+// container 初始化连接存放容器
 func container() subsection {
 	// 128 * 64 = 8192
 	const size = 128
 	buckets := make([]*bucket, size)
 	for i := 0; i < size; i++ {
-		buckets[i] = &bucket{elems: make(map[int64]*connect, 64)}
+		buckets[i] = &bucket{elems: make(map[string]*connect, 64)}
 	}
 
 	return subsection{
@@ -23,31 +24,44 @@ type subsection struct {
 }
 
 // get 获取元素
-func (sec *subsection) get(key int64) (any, bool) {
+func (sec *subsection) get(key string) (*connect, bool) {
 	bkt := sec.bucket(key)
 	return bkt.get(key)
 }
 
 // put 存放并返回是否存放成功，如果 key 已经存在则存放失败
-func (sec *subsection) put(key int64, val *connect) bool {
+func (sec *subsection) put(key string, val *connect) bool {
 	bkt := sec.bucket(key)
 	return bkt.put(key, val)
 }
 
 // del 删除元素并返回是否存在且删除成功
-func (sec *subsection) del(key int64) bool {
+func (sec *subsection) del(key string) bool {
 	bkt := sec.bucket(key)
 	return bkt.del(key)
 }
 
 // bucket 根据 key 计算所在的存储桶
-func (sec *subsection) bucket(key int64) *bucket {
-	idx := key % sec.size
+func (sec *subsection) bucket(key string) *bucket {
+	hash := sec.fnv32(key)
+	idx := int64(hash) % sec.size
 	return sec.buckets[idx]
 }
 
+// fnv32 https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV_hash_parameters
+// https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV-1_hash
+func (*subsection) fnv32(key string) uint32 {
+	hash := uint32(2166136261)
+	const prime32 = uint32(16777619)
+	for i := 0; i < len(key); i++ {
+		hash *= prime32
+		hash ^= uint32(key[i])
+	}
+	return hash
+}
+
 // foreach 循环遍历所有连接
-func (sec *subsection) foreach(fn func(key int64, val *connect)) {
+func (sec *subsection) foreach(fn func(key string, val *connect)) {
 	defer func() { recover() }()
 	for i := 0; i < int(sec.size); i++ {
 		bkt := sec.buckets[i]
@@ -60,10 +74,10 @@ func (sec *subsection) foreach(fn func(key int64, val *connect)) {
 
 type bucket struct {
 	mutex sync.RWMutex
-	elems map[int64]*connect
+	elems map[string]*connect
 }
 
-func (bkt *bucket) get(key int64) (any, bool) {
+func (bkt *bucket) get(key string) (*connect, bool) {
 	bkt.mutex.RLock()
 	val, exist := bkt.elems[key]
 	bkt.mutex.RUnlock()
@@ -71,7 +85,7 @@ func (bkt *bucket) get(key int64) (any, bool) {
 	return val, exist
 }
 
-func (bkt *bucket) put(key int64, val *connect) bool {
+func (bkt *bucket) put(key string, val *connect) bool {
 	bkt.mutex.Lock()
 	_, exist := bkt.elems[key]
 	if !exist {
@@ -82,7 +96,7 @@ func (bkt *bucket) put(key int64, val *connect) bool {
 	return !exist
 }
 
-func (bkt *bucket) del(key int64) bool {
+func (bkt *bucket) del(key string) bool {
 	bkt.mutex.Lock()
 	_, exist := bkt.elems[key]
 	if exist {
@@ -94,9 +108,9 @@ func (bkt *bucket) del(key int64) bool {
 }
 
 // copy 复制元素
-func (bkt *bucket) copy() map[int64]*connect {
+func (bkt *bucket) copy() map[string]*connect {
 	bkt.mutex.RLock()
-	ret := make(map[int64]*connect, len(bkt.elems))
+	ret := make(map[string]*connect, len(bkt.elems))
 	for k, v := range bkt.elems {
 		ret[k] = v
 	}

@@ -216,9 +216,6 @@ func (bc *brokerClient) newRequest(ctx context.Context, op Operator, body io.Rea
 		Header:     make(http.Header),
 	}
 
-	if v, ok := body.(interface{ Len() int }); ok {
-		req.ContentLength = int64(v.Len())
-	}
 	switch v := body.(type) {
 	case nil:
 	case io.ReadCloser:
@@ -232,6 +229,9 @@ func (bc *brokerClient) newRequest(ctx context.Context, op Operator, body io.Rea
 	default:
 		req.ContentLength = -1
 		req.Body = io.NopCloser(body)
+	}
+	if v, ok := body.(interface{ Len() int }); ok {
+		req.ContentLength = int64(v.Len())
 	}
 
 	// For client requests, Request.ContentLength of 0

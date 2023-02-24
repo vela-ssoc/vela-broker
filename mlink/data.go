@@ -1,7 +1,9 @@
 package mlink
 
 import (
+	"bytes"
 	"net"
+	"net/url"
 	"time"
 
 	"github.com/vela-ssoc/backend-common/encipher"
@@ -36,4 +38,36 @@ type Issue struct {
 
 func (iss Issue) Encrypt() ([]byte, error) {
 	return encipher.EncryptJSON(iss)
+}
+
+type jsonReader struct {
+	err error
+	buf *bytes.Buffer
+}
+
+func (jr *jsonReader) Read(p []byte) (int, error) {
+	if jr.err != nil {
+		return 0, jr.err
+	}
+	return jr.buf.Read(p)
+}
+
+func (jr *jsonReader) Len() int {
+	if jr.err != nil || jr.buf == nil {
+		return 0
+	}
+	return jr.buf.Len()
+}
+
+func (jr *jsonReader) Close() error {
+	return nil
+}
+
+type Opera struct {
+	query url.Values
+}
+
+func (o Opera) WithQuery(q url.Values) Opera {
+	o.query = q
+	return o
 }

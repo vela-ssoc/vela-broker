@@ -64,7 +64,7 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 	go ds.Run()
 
 	// 连接 manager 的客户端，保持在线与接受指令
-	suborder := brkapi.Handler(hub)
+	suborder := brkapi.Handler(hub, slog)
 	dc := &daemonClient{link: link, handler: suborder, errCh: errCh, slog: slog, parent: parent}
 	go dc.Run()
 
