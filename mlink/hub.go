@@ -15,12 +15,11 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-
 	"github.com/vela-ssoc/backend-common/httpclient"
 	"github.com/vela-ssoc/backend-common/logback"
 	"github.com/vela-ssoc/backend-common/model"
+	"github.com/vela-ssoc/backend-common/netutil"
 	"github.com/vela-ssoc/backend-common/opurl"
-	"github.com/vela-ssoc/backend-common/pubrr"
 	"github.com/vela-ssoc/backend-common/spdy"
 	"github.com/vela-ssoc/vela-broker/dialmgt"
 	"gorm.io/gorm"
@@ -65,8 +64,8 @@ func Hub(db *gorm.DB, link dialmgt.Linker, handle http.Handler, slog logback.Log
 	cli := &http.Client{Transport: transport}
 	hub.client = httpclient.NewClient(cli)
 	inet := link.Ident().Inet.String()
-	hub.proxy = pubrr.Forward(transport, "broker-"+inet)
-	hub.stream = pubrr.Stream(hub.dialContext)
+	hub.proxy = netutil.Forward(transport, "broker-"+inet)
+	hub.stream = netutil.Stream(hub.dialContext)
 
 	return hub
 }
@@ -79,8 +78,8 @@ type minionHub struct {
 	handle  http.Handler
 	slog    logback.Logger
 	client  httpclient.Client
-	proxy   pubrr.Forwarder
-	stream  pubrr.Streamer
+	proxy   netutil.Forwarder
+	stream  netutil.Streamer
 }
 
 func (hub *minionHub) Auth(ident Ident) (Issue, http.Header, bool, error) {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vela-ssoc/backend-common/pubrr"
+	"github.com/vela-ssoc/backend-common/pubody"
 	"github.com/vela-ssoc/backend-common/syscmd"
 	"github.com/vela-ssoc/vela-broker/brkapi/internal/reqresp"
 	"github.com/xgfone/ship/v5"
@@ -72,10 +72,10 @@ func (sc *attachCtrl) FS(c *ship.Context) error {
 		return err
 	}
 
-	ret := &pubrr.FS{Abs: name}
+	ret := &pubody.Folder{Abs: name}
 	for _, info := range infos {
 		nm := info.Name()
-		fl := &pubrr.File{
+		fl := &pubody.FileItem{
 			Path:  filepath.Join(name, nm),
 			Name:  nm,
 			Size:  info.Size(),
@@ -83,7 +83,7 @@ func (sc *attachCtrl) FS(c *ship.Context) error {
 			Dir:   info.IsDir(),
 			Mode:  info.Mode().String(),
 		}
-		ret.Files = append(ret.Files, fl)
+		ret.Items = append(ret.Items, fl)
 	}
 	// ret.Files.NameDesc()
 

@@ -2,14 +2,14 @@ package route
 
 import (
 	"github.com/gorilla/websocket"
+	"github.com/vela-ssoc/backend-common/netutil"
 	"github.com/vela-ssoc/backend-common/opurl"
-	"github.com/vela-ssoc/backend-common/pubrr"
 	"github.com/vela-ssoc/vela-broker/mlink"
 	"github.com/xgfone/ship/v5"
 )
 
 func AttachMinion(hub mlink.Huber, node string) RegRouter {
-	upg := pubrr.Upgrade(node)
+	upg := netutil.Upgrade(node)
 
 	return &attachMinionCtrl{
 		hub: hub,
@@ -62,7 +62,7 @@ func (amc *attachMinionCtrl) Socket(c *ship.Context) error {
 	//goland:noinspection GoUnhandledErrorResult
 	defer fore.Close()
 
-	pubrr.Pipe(fore, back)
+	netutil.Pipe(fore, back)
 
 	return nil
 }
