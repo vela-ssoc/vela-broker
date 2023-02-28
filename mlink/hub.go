@@ -229,20 +229,18 @@ func (hub *minionHub) BrkInet() net.IP {
 }
 
 func (hub *minionHub) Call(ctx context.Context, op opurl.URLer, body io.Reader) (*http.Response, error) {
-	req := hub.newRequest(ctx, op, body)
-	return hub.client.Fetch(req)
+	return hub.fetch(ctx, op, nil, body)
 }
 
 func (hub *minionHub) JSON(ctx context.Context, op opurl.URLer, body, reply any) error {
-	br := hub.readJSON(body)
-	res, err := hub.Call(ctx, op, br)
+	res, err := hub.fetchJSON(ctx, op, body)
 	if err != nil {
 		return err
 	}
-	//goland:noinspection GoUnhandledErrorResult
-	defer res.Body.Close()
+	err = json.NewDecoder(res.Body).Decode(reply)
+	_ = res.Body.Close()
 
-	return json.NewDecoder(res.Body).Decode(reply)
+	return err
 }
 
 func (hub *minionHub) Forward(op opurl.URLer, w http.ResponseWriter, r *http.Request) {
@@ -250,55 +248,106 @@ func (hub *minionHub) Forward(op opurl.URLer, w http.ResponseWriter, r *http.Req
 }
 
 func (hub *minionHub) Stream(op opurl.URLer, header http.Header) (*websocket.Conn, error) {
-	return hub.stream.Stream(op, header)
+	addr := op.String()
+	conn, _, err := hub.stream.Stream(addr, header)
+	if err == nil {
+		hub.slog.Infof("建立 stream (%s) 通道成功", addr)
+	} else {
+		hub.slog.Warnf("建立 stream (%s) 通道失败：%s", addr, err)
+	}
+	return conn, err
 }
 
-func (*minionHub) newRequest(ctx context.Context, op opurl.URLer, body io.Reader) *http.Request {
-	method := op.Method()
-	addr := op.URL()
+func (hub *minionHub) fetchJSON(ctx context.Context, op opurl.URLer, val any) (*http.Response, error) {
+	header := http.Header{
+		"Content-Type": []string{"application/json; charset=utf-8"},
+		"Accept":       []string{"application/json"},
+	}
+	body := hub.jsonBody(val)
+	return hub.fetch(ctx, op, header, body)
+}
+
+func (hub *minionHub) fetch(ctx context.Context, op opurl.URLer, header http.Header, body io.Reader) (*http.Response, error) {
+	req := hub.newRequest(ctx, op, header, body)
+	res, err := hub.client.Fetch(req)
+	method, dst := req.Method, req.URL
+	if err != nil {
+		hub.slog.Warnf("发送请求错误：%s %s, %v", method, dst, err)
+	} else {
+		hub.slog.Infof("发送请求成功：%s %s", method, dst)
+	}
+	return res, err
+}
+
+func (*minionHub) newRequest(ctx context.Context, op opurl.URLer, header http.Header, body io.Reader) *http.Request {
+	method, dst := op.Method(), op.URL()
+	rc, ok := body.(io.ReadCloser)
+	if !ok && body != nil {
+		rc = io.NopCloser(body)
+	}
 	req := &http.Request{
 		Method:     method,
-		URL:        addr,
+		URL:        dst,
 		Proto:      "HTTP/1.1",
 		ProtoMajor: 1,
 		ProtoMinor: 1,
-		Header:     make(http.Header),
+		Header:     header,
+		Body:       rc,
 	}
-
-	switch v := body.(type) {
-	case nil:
-	case io.ReadCloser:
-		req.Body = v
-	case *bytes.Buffer:
-		req.Body = io.NopCloser(v)
-	case *bytes.Reader:
-		req.Body = io.NopCloser(v)
-	case *strings.Reader:
-		req.Body = io.NopCloser(v)
-	default:
-		req.ContentLength = -1
-		req.Body = io.NopCloser(body)
+	if req.Header == nil {
+		req.Header = make(http.Header)
 	}
-	if le, ok := body.(interface{ Len() int }); ok {
-		req.ContentLength = int64(le.Len())
+	if body != nil {
+		switch v := body.(type) {
+		case *bytes.Buffer:
+			req.ContentLength = int64(v.Len())
+			buf := v.Bytes()
+			req.GetBody = func() (io.ReadCloser, error) {
+				r := bytes.NewReader(buf)
+				return io.NopCloser(r), nil
+			}
+		case *bytes.Reader:
+			req.ContentLength = int64(v.Len())
+			snapshot := *v
+			req.GetBody = func() (io.ReadCloser, error) {
+				r := snapshot
+				return io.NopCloser(&r), nil
+			}
+		case *strings.Reader:
+			req.ContentLength = int64(v.Len())
+			snapshot := *v
+			req.GetBody = func() (io.ReadCloser, error) {
+				r := snapshot
+				return io.NopCloser(&r), nil
+			}
+		case *jsonBody:
+			req.ContentLength = int64(v.Len())
+			req.GetBody = func() (io.ReadCloser, error) {
+				return v, nil
+			}
+		default:
+			// This is where we'd set it to -1 (at least
+			// if body != NoBody) to mean unknown, but
+			// that broke people during the Go 1.8 testing
+			// period. People depend on it being 0 I
+			// guess. Maybe retry later. See Issue 18117.
+		}
+		// For client requests, Request.ContentLength of 0
+		// means either actually 0, or unknown. The only way
+		// to explicitly say that the ContentLength is zero is
+		// to set the Body to nil. But turns out too much code
+		// depends on NewRequest returning a non-nil Body,
+		// so we use a well-known ReadCloser variable instead
+		// and have the http package also treat that sentinel
+		// variable to mean explicitly zero.
+		if req.GetBody != nil && req.ContentLength == 0 {
+			req.Body = http.NoBody
+			req.GetBody = func() (io.ReadCloser, error) { return http.NoBody, nil }
+		}
 	}
-
-	// For client requests, Request.ContentLength of 0
-	// means either actually 0, or unknown. The only way
-	// to explicitly say that the ContentLength is zero is
-	// to set the Body to nil. But turns out too much code
-	// depends on NewRequest returning a non-nil Body,
-	// so we use a well-known ReadCloser variable instead
-	// and have the http package also treat that sentinel
-	// variable to mean explicitly zero.
-	if req.Body != nil && req.ContentLength == 0 {
-		req.Body = http.NoBody
-	}
-
 	if ctx == nil {
 		ctx = context.Background()
 	}
-
 	return req.WithContext(ctx)
 }
 
@@ -315,12 +364,12 @@ func (hub *minionHub) dialContext(_ context.Context, _, addr string) (net.Conn, 
 	return nil, ErrMinionOffline
 }
 
-func (*minionHub) readJSON(v any) *jsonReader {
+func (*minionHub) jsonBody(v any) *jsonBody {
 	if v == nil {
-		return &jsonReader{err: io.EOF}
+		return nil
 	}
 
 	buf := new(bytes.Buffer)
 	err := json.NewEncoder(buf).Encode(v)
-	return &jsonReader{err: err, buf: buf}
+	return &jsonBody{err: err, buf: buf}
 }

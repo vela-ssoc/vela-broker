@@ -2,6 +2,7 @@ package mlink
 
 import (
 	"bytes"
+	"io"
 	"net"
 	"time"
 
@@ -39,25 +40,26 @@ func (iss Issue) Encrypt() ([]byte, error) {
 	return encipher.EncryptJSON(iss)
 }
 
-type jsonReader struct {
+type jsonBody struct {
 	err error
 	buf *bytes.Buffer
 }
 
-func (jr *jsonReader) Read(p []byte) (int, error) {
-	if jr.err != nil {
-		return 0, jr.err
+func (jb *jsonBody) Read(p []byte) (int, error) {
+	if jb.err != nil {
+		return 0, jb.err
 	}
-	return jr.buf.Read(p)
+	if jb.buf == nil {
+		return 0, io.EOF
+	}
+	return jb.buf.Read(p)
 }
 
-func (jr *jsonReader) Len() int {
-	if jr.err != nil || jr.buf == nil {
+func (jb *jsonBody) Close() error { return nil }
+
+func (jb *jsonBody) Len() int {
+	if jb.err != nil || jb.buf == nil {
 		return 0
 	}
-	return jr.buf.Len()
-}
-
-func (jr *jsonReader) Close() error {
-	return nil
+	return jb.buf.Len()
 }
