@@ -33,7 +33,7 @@ type Huber interface {
 	BrkInet() net.IP
 	ResetDB() error
 	Forward(opurl.URLer, http.ResponseWriter, *http.Request)
-	Stream(op opurl.URLer) (*websocket.Conn, error)
+	Stream(op opurl.URLer, header http.Header) (*websocket.Conn, error)
 }
 
 var (
@@ -249,8 +249,8 @@ func (hub *minionHub) Forward(op opurl.URLer, w http.ResponseWriter, r *http.Req
 	hub.proxy.Forward(op, w, r)
 }
 
-func (hub *minionHub) Stream(op opurl.URLer) (*websocket.Conn, error) {
-	return hub.stream.Stream(op)
+func (hub *minionHub) Stream(op opurl.URLer, header http.Header) (*websocket.Conn, error) {
+	return hub.stream.Stream(op, header)
 }
 
 func (*minionHub) newRequest(ctx context.Context, op opurl.URLer, body io.Reader) *http.Request {

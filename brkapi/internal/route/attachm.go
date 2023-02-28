@@ -48,7 +48,7 @@ func (amc *attachMinionCtrl) Socket(c *ship.Context) error {
 	mid := c.Param("mid")
 	path := c.Param("path")
 	op := opurl.BMws(mid, path, r.URL.RawQuery)
-	back, err := amc.hub.Stream(op)
+	back, err := amc.hub.Stream(op, nil)
 	if err != nil {
 		return err
 	}

@@ -21,7 +21,7 @@ type attachCtrl struct{}
 
 func (sc *attachCtrl) RegRoute(rgb *ship.RouteGroupBuilder) {
 	rgb.Route("/brr/syscmd").GET(sc.Syscmd)
-	rgb.Route("/brr/fs").GET(sc.FS)
+	rgb.Route("/brr/fm").GET(sc.FM)
 }
 
 func (sc *attachCtrl) Syscmd(c *ship.Context) error {
@@ -53,37 +53,57 @@ func (sc *attachCtrl) Syscmd(c *ship.Context) error {
 	return c.JSON(http.StatusOK, ret)
 }
 
-func (sc *attachCtrl) FS(c *ship.Context) error {
-	str := c.Query("path", "/")
-	name := filepath.Clean(str)
-	open, err := os.Open(name)
+func (sc *attachCtrl) FM(c *ship.Context) error {
+	match := c.Query("match")
+	str := c.Query("path", "./")
+	abs, err := filepath.Abs(str)
 	if err != nil {
 		return err
 	}
+	open, err := os.Open(abs)
+	if err != nil {
+		return err
+	}
+	//goland:noinspection GoUnhandledErrorResult
+	defer open.Close()
+
 	if stat, err := open.Stat(); err != nil {
 		return err
 	} else if !stat.IsDir() {
-		return c.Attachment(name, "")
+		return c.Attachment(abs, "")
 	}
 
 	infos, err := open.Readdir(-1)
-	_ = open.Close()
 	if err != nil {
 		return err
 	}
 
-	ret := &pubody.Folder{Abs: name}
+	sep := string(os.PathSeparator)
+	ret := &pubody.Folder{
+		Abs:       abs,
+		Separator: sep,
+		Items:     make(pubody.FileItems, 0, 32),
+	}
 	for _, info := range infos {
 		nm := info.Name()
-		fl := &pubody.FileItem{
-			Path:  filepath.Join(name, nm),
+		if match != "" {
+			if matched, err := filepath.Match(match, nm); err == nil && !matched {
+				continue
+			}
+		}
+		dir := info.IsDir()
+		item := &pubody.FileItem{
+			Path:  filepath.Join(abs, nm),
 			Name:  nm,
 			Size:  info.Size(),
 			Mtime: info.ModTime(),
-			Dir:   info.IsDir(),
+			Dir:   dir,
 			Mode:  info.Mode().String(),
 		}
-		ret.Items = append(ret.Items, fl)
+		if !dir {
+			item.Ext = filepath.Ext(nm)
+		}
+		ret.Items = append(ret.Items, item)
 	}
 	// ret.Files.NameDesc()
 
