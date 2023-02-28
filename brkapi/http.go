@@ -14,15 +14,13 @@ func Handler(hub mlink.Huber, slog logback.Logger) http.Handler {
 	sh := ship.Default()
 	sh.Logger = slog
 
-	inet := hub.BrkInet()
-	node := "broker-" + inet.String()
+	node := hub.NodeName()
 	sh.HandleError = netutil.ErrorFunc(node)
 	sh.NotFound = netutil.Notfound(node)
 
 	group := sh.Group("/api")
 	route.Ping().RegRoute(group)
-	route.Attach().RegRoute(group)
-	route.AttachMinion(hub, node).RegRoute(group)
+	route.Attach(hub).RegRoute(group)
 
 	return sh
 }

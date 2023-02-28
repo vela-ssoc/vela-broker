@@ -7,21 +7,70 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/vela-ssoc/backend-common/netutil"
+	"github.com/vela-ssoc/backend-common/opurl"
 	"github.com/vela-ssoc/backend-common/pubody"
 	"github.com/vela-ssoc/backend-common/syscmd"
 	"github.com/vela-ssoc/vela-broker/brkapi/internal/reqresp"
+	"github.com/vela-ssoc/vela-broker/mlink"
 	"github.com/xgfone/ship/v5"
 )
 
-func Attach() RegRouter {
-	return new(attachCtrl)
+func Attach(hub mlink.Huber) RegRouter {
+	node := hub.NodeName()
+	upg := netutil.Upgrade(node)
+
+	return &attachCtrl{
+		hub: hub,
+		upg: upg,
+	}
 }
 
-type attachCtrl struct{}
+type attachCtrl struct {
+	hub mlink.Huber
+	upg websocket.Upgrader
+}
 
 func (sc *attachCtrl) RegRoute(rgb *ship.RouteGroupBuilder) {
+	rgb.Route("/mrr/:mid/*path").Any(sc.Mrr)
+	rgb.Route("/mws/:mid/*path").GET(sc.Mws)
 	rgb.Route("/brr/syscmd").GET(sc.Syscmd)
 	rgb.Route("/brr/fm").GET(sc.FM)
+	rgb.Route("/bws/echo").GET(sc.Echo)
+}
+
+func (sc *attachCtrl) Mrr(c *ship.Context) error {
+	mid := c.Param("mid")
+	path := c.Param("path")
+	w, r := c.ResponseWriter(), c.Request()
+	op := opurl.BMrr(mid, c.Method(), path, r.URL.RawQuery)
+	sc.hub.Forward(op, w, r)
+
+	return nil
+}
+
+func (sc *attachCtrl) Mws(c *ship.Context) error {
+	mid := c.Param("mid")
+	path := c.Param("path")
+	w, r := c.ResponseWriter(), c.Request()
+	query := r.URL.RawQuery
+	op := opurl.BMws(mid, path, query)
+	back, err := sc.hub.Stream(op, nil)
+	if err != nil {
+		return err
+	}
+	//goland:noinspection GoUnhandledErrorResult
+	defer back.Close()
+
+	fore, err := sc.upg.Upgrade(w, r, nil)
+	if err != nil {
+		return err
+	}
+
+	netutil.Pipe(fore, back)
+
+	return nil
 }
 
 func (sc *attachCtrl) Syscmd(c *ship.Context) error {
@@ -105,7 +154,38 @@ func (sc *attachCtrl) FM(c *ship.Context) error {
 		}
 		ret.Items = append(ret.Items, item)
 	}
-	// ret.Files.NameDesc()
 
 	return c.JSON(http.StatusOK, ret)
+}
+
+func (sc *attachCtrl) Echo(c *ship.Context) error {
+	w, r := c.ResponseWriter(), c.Request()
+	conn, err := sc.upg.Upgrade(w, r, nil)
+	if err != nil {
+		return err
+	}
+	//goland:noinspection GoUnhandledErrorResult
+	defer conn.Close()
+
+	for {
+		mt, data, err := conn.ReadMessage()
+		if err != nil {
+			c.Warnf("读取 socket 错误：%s", err)
+			break
+		}
+		str := string(data)
+		c.Infof("socket 收到消息：%s", str)
+		ret := &socketReply{Type: mt, Data: str, TimeAt: time.Now()}
+		if err = conn.WriteJSON(ret); err != nil {
+			c.Warnf("写入 socket 错误：%s", err)
+		}
+	}
+
+	return nil
+}
+
+type socketReply struct {
+	Type   int       `json:"type"`
+	Data   string    `json:"data"`
+	TimeAt time.Time `json:"time_at"`
 }

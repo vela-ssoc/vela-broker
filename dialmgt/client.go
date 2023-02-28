@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -38,6 +39,10 @@ func (bc *brokerClient) Hide() Hide           { return bc.hide }
 func (bc *brokerClient) Ident() Ident         { return bc.ident }
 func (bc *brokerClient) Issue() Issue         { return bc.issue }
 func (bc *brokerClient) Listen() net.Listener { return bc.mux }
+
+func (bc *brokerClient) NodeName() string {
+	return fmt.Sprintf("broker-%s-%d", bc.ident.Inet, bc.ident.ID)
+}
 
 func (bc *brokerClient) Oneway(ctx context.Context, op opurl.URLer, body io.Reader) error {
 	res, err := bc.Call(ctx, op, body)

@@ -22,6 +22,7 @@ type Linker interface {
 	Oneway(context.Context, opurl.URLer, io.Reader) error
 	Call(context.Context, opurl.URLer, io.Reader) (*http.Response, error)
 	Listen() net.Listener
+	NodeName() string
 	Reconnect(context.Context) error
 }
 
@@ -46,7 +47,7 @@ func Dial(parent context.Context, hide Hide, slog logback.Logger) (Linker, error
 		return nil, err
 	}
 
-	go bc.heartbeat(5 * time.Second)
+	go bc.heartbeat(time.Minute)
 
 	return bc, nil
 }

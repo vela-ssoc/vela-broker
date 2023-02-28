@@ -27,10 +27,10 @@ import (
 
 type Huber interface {
 	Joiner
-	BrkHide() dialmgt.Hide
-	BrkIdent() dialmgt.Ident
-	BrkIssue() dialmgt.Issue
-	BrkInet() net.IP
+	Hide() dialmgt.Hide
+	Ident() dialmgt.Ident
+	Issue() dialmgt.Issue
+	NodeName() string
 	ResetDB() error
 	Forward(opurl.URLer, http.ResponseWriter, *http.Request)
 	Stream(op opurl.URLer, header http.Header) (*websocket.Conn, error)
@@ -80,6 +80,22 @@ type minionHub struct {
 	client  httpclient.Client
 	proxy   netutil.Forwarder
 	stream  netutil.Streamer
+}
+
+func (hub *minionHub) Hide() dialmgt.Hide {
+	return hub.link.Hide()
+}
+
+func (hub *minionHub) Ident() dialmgt.Ident {
+	return hub.link.Ident()
+}
+
+func (hub *minionHub) Issue() dialmgt.Issue {
+	return hub.link.Issue()
+}
+
+func (hub *minionHub) NodeName() string {
+	return hub.link.NodeName()
 }
 
 func (hub *minionHub) Auth(ident Ident) (Issue, http.Header, bool, error) {
