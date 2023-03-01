@@ -33,29 +33,29 @@ type attachCtrl struct {
 }
 
 func (sc *attachCtrl) RegRoute(rgb *ship.RouteGroupBuilder) {
-	rgb.Route("/mrr/:mid/*path").Any(sc.Mrr)
-	rgb.Route("/mws/:mid/*path").GET(sc.Mws)
+	rgb.Route("/arr/:mid/*path").Any(sc.Arr)
+	rgb.Route("/aws/:mid/*path").GET(sc.Aws)
 	rgb.Route("/brr/syscmd").GET(sc.Syscmd)
 	rgb.Route("/brr/fm").GET(sc.FM)
 	rgb.Route("/bws/echo").GET(sc.Echo)
 }
 
-func (sc *attachCtrl) Mrr(c *ship.Context) error {
+func (sc *attachCtrl) Arr(c *ship.Context) error {
 	mid := c.Param("mid")
 	path := c.Param("path")
 	w, r := c.ResponseWriter(), c.Request()
-	op := opurl.BMrr(mid, c.Method(), path, r.URL.RawQuery)
+	op := opurl.BArr(mid, c.Method(), path, r.URL.RawQuery)
 	sc.hub.Forward(op, w, r)
 
 	return nil
 }
 
-func (sc *attachCtrl) Mws(c *ship.Context) error {
+func (sc *attachCtrl) Aws(c *ship.Context) error {
 	mid := c.Param("mid")
 	path := c.Param("path")
 	w, r := c.ResponseWriter(), c.Request()
 	query := r.URL.RawQuery
-	op := opurl.BMws(mid, path, query)
+	op := opurl.BAws(mid, path, query)
 	back, err := sc.hub.Stream(op, nil)
 	if err != nil {
 		return err

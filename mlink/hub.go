@@ -63,8 +63,8 @@ func Hub(db *gorm.DB, link dialmgt.Linker, handle http.Handler, slog logback.Log
 	transport := &http.Transport{DialContext: hub.dialContext}
 	cli := &http.Client{Transport: transport}
 	hub.client = httpclient.NewClient(cli)
-	inet := link.Ident().Inet.String()
-	hub.proxy = netutil.Forward(transport, "broker-"+inet)
+	node := link.NodeName()
+	hub.proxy = netutil.Forward(transport, node)
 	hub.stream = netutil.Stream(hub.dialContext)
 
 	return hub

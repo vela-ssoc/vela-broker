@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/vela-ssoc/backend-common/httpclient"
 	"github.com/vela-ssoc/backend-common/logback"
@@ -47,7 +46,7 @@ func Dial(parent context.Context, hide Hide, slog logback.Logger) (Linker, error
 		return nil, err
 	}
 
-	go bc.heartbeat(time.Minute)
+	// go bc.heartbeat(time.Minute)
 
 	return bc, nil
 }

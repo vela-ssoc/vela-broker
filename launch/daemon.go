@@ -54,14 +54,10 @@ type daemonClient struct {
 }
 
 func (dc *daemonClient) Run() {
-	srv := &http.Server{
-		Handler: dc.handler,
-	}
-	dc.server = srv
-
 	for {
 		lis := dc.link.Listen()
-		_ = srv.Serve(lis)
+		dc.server = &http.Server{Handler: dc.handler}
+		_ = dc.server.Serve(lis)
 		dc.slog.Warn("与中心端的连接已断开")
 		if err := dc.parent.Err(); err != nil {
 			dc.errCh <- err
