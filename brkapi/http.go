@@ -20,8 +20,10 @@ func Handler(hub mlink.Huber, slog logback.Logger) http.Handler {
 	sh.NotFound = netutil.Notfound(node)
 
 	group := sh.Group("/api")
+
 	route.Ping().RegRoute(group)
 	route.Attach(hub).RegRoute(group)
+	route.Pprof().RegRoute(group)
 
 	return sh
 }

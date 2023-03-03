@@ -12,7 +12,6 @@ import (
 	"github.com/vela-ssoc/backend-common/opurl"
 	"github.com/vela-ssoc/backend-common/pubody"
 	"github.com/vela-ssoc/backend-common/syscmd"
-	"github.com/vela-ssoc/vela-broker/brkapi/internal/reqresp"
 	"github.com/vela-ssoc/vela-broker/mlink"
 	"github.com/xgfone/ship/v5"
 )
@@ -74,30 +73,13 @@ func (sc *attachCtrl) Aws(c *ship.Context) error {
 }
 
 func (sc *attachCtrl) Syscmd(c *ship.Context) error {
-	var req reqresp.Syscmd
+	var req syscmd.Input
 	if err := c.BindQuery(&req); err != nil {
 		return err
 	}
 
-	timeout := req.Timeout
-	if timeout < time.Second || timeout > time.Minute {
-		timeout = 30 * time.Second
-	}
-
-	// 主要是增加用户的易用性
-	cmd, args := req.Cmd, req.Args
-	asz := len(args)
-	if asz == 0 {
-		split := strings.Split(cmd, " ")
-		if len(split) > 1 {
-			cmd, args = split[0], split[1:]
-		}
-	} else if asz == 1 {
-		args = strings.Split(args[0], " ")
-	}
-
-	c.Warnf("命令执行: %s %s", cmd, strings.Join(args, " "))
-	ret := syscmd.ExecTimeout(timeout, cmd, args...)
+	ret := syscmd.Exec(req, false)
+	c.Warnf("[命令执行] %s %s, error: %s", ret.Cmd, strings.Join(ret.Args, " "), ret.Error)
 
 	return c.JSON(http.StatusOK, ret)
 }
@@ -133,10 +115,13 @@ func (sc *attachCtrl) FM(c *ship.Context) error {
 		Separator: sep,
 		Items:     make(pubody.FileItems, 0, 32),
 	}
+	var matchErr error
 	for _, info := range infos {
 		nm := info.Name()
-		if match != "" {
-			if matched, err := filepath.Match(match, nm); err == nil && !matched {
+		if matchErr == nil && match != "" {
+			var matched bool
+			matched, matchErr = filepath.Match(match, nm)
+			if matchErr == nil && !matched {
 				continue
 			}
 		}
@@ -178,6 +163,7 @@ func (sc *attachCtrl) Echo(c *ship.Context) error {
 		ret := &socketReply{Type: mt, Data: str, TimeAt: time.Now()}
 		if err = conn.WriteJSON(ret); err != nil {
 			c.Warnf("写入 socket 错误：%s", err)
+			break
 		}
 	}
 
