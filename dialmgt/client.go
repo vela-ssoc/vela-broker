@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vela-ssoc/backend-common/httpclient"
 	"github.com/vela-ssoc/backend-common/logback"
 	"github.com/vela-ssoc/backend-common/opurl"
 	"github.com/vela-ssoc/backend-common/spdy"
@@ -27,7 +26,7 @@ type brokerClient struct {
 	ident  Ident
 	issue  Issue
 	slog   logback.Logger
-	client httpclient.Client
+	client opurl.Client
 	dialer *iterDial
 	mux    spdy.Muxer
 	parent context.Context
@@ -45,17 +44,15 @@ func (bc *brokerClient) NodeName() string {
 }
 
 func (bc *brokerClient) Oneway(ctx context.Context, op opurl.URLer, body io.Reader) error {
-	res, err := bc.Call(ctx, op, body)
-	if err != nil {
-		return err
+	res, err := bc.client.Fetch(ctx, op, nil, body)
+	if err == nil {
+		_ = res.Body.Close()
 	}
-	_ = res.Body.Close()
-	return nil
+	return err
 }
 
-func (bc *brokerClient) Call(ctx context.Context, op opurl.URLer, body io.Reader) (*http.Response, error) {
-	req := bc.newRequest(ctx, op, body)
-	return bc.client.Fetch(req)
+func (bc *brokerClient) Fetch(ctx context.Context, op opurl.URLer, body io.Reader) (*http.Response, error) {
+	return bc.client.Fetch(ctx, op, nil, body)
 }
 
 func (bc *brokerClient) Reconnect(parent context.Context) error {
@@ -95,7 +92,7 @@ func (bc *brokerClient) dial(parent context.Context) error {
 		if pe := parent.Err(); pe != nil {
 			return pe
 		}
-		if he, ok := err.(*httpclient.Error); ok && he.NotAcceptable() {
+		if he, ok := err.(*opurl.Error); ok && he.NotAcceptable() {
 			return err
 		}
 
@@ -144,7 +141,7 @@ func (bc *brokerClient) consult(parent context.Context, conn net.Conn, addr *Add
 		}
 	}
 
-	req := bc.newRequest(parent, opurl.BrkJoin, buf)
+	req := bc.client.NewRequest(parent, opurl.BrkJoin, nil, buf)
 	req.Host = host
 	req.URL.Host = host
 	if err = req.Write(conn); err != nil {
@@ -165,7 +162,7 @@ func (bc *brokerClient) consult(parent context.Context, conn net.Conn, addr *Add
 		ret := struct {
 			Message string `json:"message"`
 		}{}
-		exr := &httpclient.Error{Code: code}
+		exr := &opurl.Error{Code: code}
 		if err = json.Unmarshal(cause[:n], &ret); err == nil {
 			exr.Text = []byte(ret.Message)
 		} else {
@@ -205,55 +202,6 @@ func (bc *brokerClient) dialSleep(ctx context.Context, start time.Time) {
 	case <-ctx.Done():
 	case <-time.After(du):
 	}
-}
-
-func (bc *brokerClient) newRequest(ctx context.Context, op opurl.URLer, body io.Reader) *http.Request {
-	method := op.Method()
-	addr := op.URL()
-	req := &http.Request{
-		Method:     method,
-		URL:        addr,
-		Proto:      "HTTP/1.1",
-		ProtoMajor: 1,
-		ProtoMinor: 1,
-		Header:     make(http.Header),
-	}
-
-	switch v := body.(type) {
-	case nil:
-	case io.ReadCloser:
-		req.Body = v
-	case *bytes.Buffer:
-		req.Body = io.NopCloser(v)
-	case *bytes.Reader:
-		req.Body = io.NopCloser(v)
-	case *strings.Reader:
-		req.Body = io.NopCloser(v)
-	default:
-		req.ContentLength = -1
-		req.Body = io.NopCloser(body)
-	}
-	if v, ok := body.(interface{ Len() int }); ok {
-		req.ContentLength = int64(v.Len())
-	}
-
-	// For client requests, Request.ContentLength of 0
-	// means either actually 0, or unknown. The only way
-	// to explicitly say that the ContentLength is zero is
-	// to set the Body to nil. But turns out too much code
-	// depends on NewRequest returning a non-nil Body,
-	// so we use a well-known ReadCloser variable instead
-	// and have the http package also treat that sentinel
-	// variable to mean explicitly zero.
-	if req.Body != nil && req.ContentLength == 0 {
-		req.Body = http.NoBody
-	}
-
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	return req.WithContext(ctx)
 }
 
 func (bc *brokerClient) dialContext(_ context.Context, _, _ string) (net.Conn, error) {

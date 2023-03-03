@@ -31,8 +31,8 @@ github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.2 h1:+h33VjcLVPDHtOdpUCuF+7gSuG3yGIftsP1YvFihtJ8=
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-github.com/vela-ssoc/backend-common v0.0.0-20230303040846-e56358dcce7f h1:AgKDx3Z09UXgepRlvzbBodqCHJ4tLiet5Fl1WhDzrEY=
-github.com/vela-ssoc/backend-common v0.0.0-20230303040846-e56358dcce7f/go.mod h1:BL6rBgjyfXXUPoNDUH/inmWxMqoU6Dcvhd/xl1UtT6w=
+github.com/vela-ssoc/backend-common v0.0.0-20230303071013-a220adec95d5 h1:l0laJANKtCuhf3gLcJygtgl4VW2VWuZ7K/BSpK8JA98=
+github.com/vela-ssoc/backend-common v0.0.0-20230303071013-a220adec95d5/go.mod h1:BL6rBgjyfXXUPoNDUH/inmWxMqoU6Dcvhd/xl1UtT6w=
 github.com/xgfone/ship/v5 v5.3.1 h1:e5qhMT6DSQOE6A/xDBL/Ftf28BGptNw6Etq+w+pme6E=
 github.com/xgfone/ship/v5 v5.3.1/go.mod h1:mGI+65lLL3kaOseMkWUYgy+OFl27WV2LY1NSsecu/9g=
 go.uber.org/atomic v1.10.0 h1:9qC72Qh0+3MqyJbAn8YU5xVq1frD8bn3JtD2oXtafVQ=
