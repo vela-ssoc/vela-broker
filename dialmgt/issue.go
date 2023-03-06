@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -54,17 +55,22 @@ func (ln Listen) Certifier() ([]tls.Certificate, error) {
 }
 
 type Logger struct {
-	Level    string             `json:"level"    yaml:"level"`
-	Console  bool               `json:"console"  yaml:"console"`
-	Colorful bool               `json:"colorful" yaml:"colorful"`
-	Lumber   *lumberjack.Logger `json:"lumber"   yaml:"lumber"`
+	Level     string `json:"level"     yaml:"level"`
+	Console   bool   `json:"console"   yaml:"console"`
+	Colorful  bool   `json:"colorful"  yaml:"colorful"`
+	Directory string `json:"directory" yaml:"directory"`
+	Maxsize   int    `json:"maxsize"   yaml:"maxsize"`
+	MaxAge    int    `json:"maxage"    yaml:"maxage"`
+	Backup    int    `json:"backup"    yaml:"backup"`
+	Localtime bool   `json:"localtime" yaml:"localtime"`
+	Compress  bool   `json:"compress"  yaml:"compress"`
 }
 
 func (l Logger) Zap() *zap.Logger {
 	console := l.Console
 	var filename string
-	if l.Lumber != nil {
-		filename = l.Lumber.Filename
+	if dir := l.Directory; dir != "" {
+		filename = filepath.Join(dir, "broker.log")
 	}
 	// 既不输出到控制台又不输出到日志文件
 	if !console && filename == "" {
@@ -80,16 +86,26 @@ func (l Logger) Zap() *zap.Logger {
 	}
 
 	var syncer zapcore.WriteSyncer
-	if console && filename != "" {
-		syncer = zapcore.NewMultiWriteSyncer(zapcore.AddSync(l.Lumber), zapcore.AddSync(os.Stdout))
-	} else if filename != "" {
-		syncer = zapcore.AddSync(l.Lumber)
-	} else {
+	if console {
 		syncer = zapcore.AddSync(os.Stdout)
+	}
+	if filename != "" {
+		lumber := &lumberjack.Logger{
+			Filename:   filename,
+			MaxSize:    l.Maxsize,
+			MaxAge:     l.MaxAge,
+			MaxBackups: l.Backup,
+			LocalTime:  l.Localtime,
+			Compress:   l.Compress,
+		}
+		if syncer == nil {
+			syncer = zapcore.AddSync(lumber)
+		} else {
+			syncer = zapcore.NewMultiWriteSyncer(syncer, zapcore.AddSync(lumber))
+		}
 	}
 
 	encoder := zapcore.NewConsoleEncoder(prod)
-
 	level := zapcore.WarnLevel
 	_ = level.Set(l.Level) // 就算设置失败还是默认值 WarnLevel
 	core := zapcore.NewCore(encoder, syncer, level)
