@@ -59,7 +59,7 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 	errCh := make(chan error, 1)
 
 	// 监听本地端口用于 minion 节点连接
-	local := lisapi.Handler(gateway)
+	local := lisapi.Handler(gateway, hub, slog)
 	ds := &daemonServer{listen: issue.Listen, handler: local, errCh: errCh}
 	go ds.Run()
 

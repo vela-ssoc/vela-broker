@@ -33,7 +33,7 @@ type Ident struct {
 	TimeAt     time.Time    `json:"time_at"`    // 发起时间
 }
 
-func (ide Ident) Encrypt() ([]byte, error) {
+func (ide Ident) encrypt() ([]byte, error) {
 	return encipher.EncryptJSON(ide)
 }
 

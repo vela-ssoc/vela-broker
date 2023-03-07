@@ -23,8 +23,8 @@ type Issue struct {
 	Database Database `json:"database"` // 数据库配置
 }
 
-// Decrypt 解密消息
-func (issue *Issue) Decrypt(data []byte) error {
+// decrypt 解密消息
+func (issue *Issue) decrypt(data []byte) error {
 	return encipher.DecryptJSON(data, issue)
 }
 

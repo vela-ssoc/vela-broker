@@ -127,7 +127,7 @@ func (bc *brokerClient) consult(parent context.Context, conn net.Conn, addr *Add
 	}
 
 	var issue Issue
-	enc, err := ident.Encrypt()
+	enc, err := ident.encrypt()
 	if err != nil {
 		return ident, issue, err
 	}
@@ -174,7 +174,7 @@ func (bc *brokerClient) consult(parent context.Context, conn net.Conn, addr *Add
 
 	resp := make([]byte, 40960)
 	n, _ := res.Body.Read(resp)
-	err = issue.Decrypt(resp[:n])
+	err = issue.decrypt(resp[:n])
 
 	return ident, issue, err
 }
