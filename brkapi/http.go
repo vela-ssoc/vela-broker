@@ -19,7 +19,7 @@ func Handler(hub mlink.Huber, slog logback.Logger) http.Handler {
 	sh.HandleError = netutil.ErrorFunc(node)
 	sh.NotFound = netutil.Notfound(node)
 
-	group := sh.Group("/api")
+	group := sh.Group("/api/v1")
 
 	route.Ping().RegRoute(group)
 	route.Attach(hub).RegRoute(group)

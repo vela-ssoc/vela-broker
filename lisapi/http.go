@@ -8,7 +8,7 @@ import (
 
 func Handler(gw http.Handler) http.Handler {
 	sh := ship.Default()
-	group := sh.Group("/api")
+	group := sh.Group("/api/v1")
 	group.Route("/minion").CONNECT(func(c *ship.Context) error {
 		gw.ServeHTTP(c.ResponseWriter(), c.Request())
 		return nil
