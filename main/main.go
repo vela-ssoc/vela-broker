@@ -11,28 +11,26 @@ import (
 	"github.com/vela-ssoc/vela-broker/launch"
 )
 
-// args 命令行参数
-var args struct {
-	version bool   // 打印版本号退出
-	config  string // 配置文件 dev 模式才有效
-}
-
 func main() {
 	parse() // parse 命令行参数
 	if banner.Print(os.Stdout); args.version {
 		return
 	}
 
-	// 初始化日志
-	slog := logback.Stdout()
+	slog := logback.Stdout() // 初始化日志
+	hide, err := readHide()  // 读取 hide 配置
+	if err != nil {
+		slog.Warnf("读取 hide 配置错误：%v", err)
+	}
+
 	cares := []os.Signal{syscall.SIGTERM, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGINT}
 	ctx, cancel := signal.NotifyContext(context.Background(), cares...)
 	defer cancel()
 	slog.Infof("按 Ctrl+C 结束运行")
 
-	if err := launch.Run(ctx, args.config, slog); err != nil {
+	if err = launch.Run(ctx, hide, slog); err != nil {
 		slog.Warnf("程序运行错误：%v", err)
 	}
 
-	slog.Warnf("程序运行结束")
+	slog.Info("程序运行结束")
 }

@@ -2,10 +2,8 @@ package launch
 
 import (
 	"context"
-	"os"
 
 	"github.com/vela-ssoc/backend-common/logback"
-	"github.com/vela-ssoc/vela-broker/infra/bootstrap"
 	"github.com/vela-ssoc/vela-broker/mlink"
 	"github.com/vela-ssoc/vela-broker/restapi/agtsrv"
 	"github.com/vela-ssoc/vela-broker/restapi/listen"
@@ -17,14 +15,8 @@ import (
 )
 
 // Run 运行服务
-func Run(parent context.Context, cfg string, slog logback.Logger) error {
-	var hide telmgt.Hide
-	if err := bootstrap.AutoLoad(cfg, os.Args[0], &hide); err != nil {
-		return err
-	}
-
-	// 与中心端建立连接
-	link, err := telmgt.Dial(parent, hide, slog)
+func Run(parent context.Context, hide telmgt.Hide, slog logback.Logger) error {
+	link, err := telmgt.Dial(parent, hide, slog) // 与中心端建立连接
 	if err != nil {
 		return err
 	}

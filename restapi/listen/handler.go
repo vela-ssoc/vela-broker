@@ -23,7 +23,9 @@ func Handler(gw http.Handler, node string, slog logback.Logger) http.Handler {
 	return sh
 }
 
-func BindTo(sh *ship.Ship, gw http.Handler) {
+func BindTo(sh *ship.Ship, gw http.Handler, node string) {
+	sh.NotFound = netutil.Notfound(node)
+	sh.HandleError = netutil.ErrorFunc(node)
 	v1api := sh.Group("/api/v1")
 	logic.Join(gw).Route(v1api)
 }

@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/vela-ssoc/backend-common v0.0.0-20230307031349-5cf9e3af6934
+	github.com/vela-ssoc/backend-common v0.0.0-20230308032351-c1a4807bcaca
 	github.com/xgfone/ship/v5 v5.3.1
 	go.uber.org/zap v1.24.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
