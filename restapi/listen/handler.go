@@ -1,4 +1,4 @@
-package lisapi
+package listen
 
 import (
 	"net/http"
@@ -6,23 +6,24 @@ import (
 	"github.com/vela-ssoc/backend-common/logback"
 	"github.com/vela-ssoc/backend-common/netutil"
 	"github.com/vela-ssoc/backend-common/validate"
-	"github.com/vela-ssoc/vela-broker/mlink"
+	"github.com/vela-ssoc/vela-broker/restapi/listen/logic"
 	"github.com/xgfone/ship/v5"
 )
 
-func Handler(gw http.Handler, hub mlink.Huber, slog logback.Logger) http.Handler {
-	node := hub.NodeName()
+func Handler(gw http.Handler, node string, slog logback.Logger) http.Handler {
 	sh := ship.Default()
 	sh.NotFound = netutil.Notfound(node)
 	sh.HandleError = netutil.ErrorFunc(node)
 	sh.Validator = validate.New()
 	sh.Logger = slog
 
-	group := sh.Group("/api/v1")
-	group.Route("/minion").CONNECT(func(c *ship.Context) error {
-		gw.ServeHTTP(c.ResponseWriter(), c.Request())
-		return nil
-	})
+	v1api := sh.Group("/api/v1")
+	logic.Join(gw).Route(v1api)
 
 	return sh
+}
+
+func BindTo(sh *ship.Ship, gw http.Handler) {
+	v1api := sh.Group("/api/v1")
+	logic.Join(gw).Route(v1api)
 }

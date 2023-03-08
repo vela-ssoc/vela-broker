@@ -17,15 +17,15 @@ import (
 	"github.com/vela-ssoc/backend-common/netutil"
 	"github.com/vela-ssoc/backend-common/opurl"
 	"github.com/vela-ssoc/backend-common/spdy"
-	"github.com/vela-ssoc/vela-broker/dialmgt"
+	"github.com/vela-ssoc/vela-broker/telmgt"
 	"gorm.io/gorm"
 )
 
 type Huber interface {
 	Joiner
-	Hide() dialmgt.Hide
-	Ident() dialmgt.Ident
-	Issue() dialmgt.Issue
+	Hide() telmgt.Hide
+	Ident() telmgt.Ident
+	Issue() telmgt.Issue
 	NodeName() string
 	ResetDB() error
 	Forward(opurl.URLer, http.ResponseWriter, *http.Request)
@@ -41,7 +41,7 @@ var (
 	ErrMinionOffline  = errors.New("节点未在线")
 )
 
-func Hub(db *gorm.DB, link dialmgt.Linker, handle http.Handler, slog logback.Logger) Huber {
+func Hub(db *gorm.DB, link telmgt.Linker, handle http.Handler, slog logback.Logger) Huber {
 	if handle == nil {
 		handle = http.DefaultServeMux
 	}
@@ -69,7 +69,7 @@ type minionHub struct {
 	db      *gorm.DB
 	random  *rand.Rand
 	section subsection
-	link    dialmgt.Linker
+	link    telmgt.Linker
 	handle  http.Handler
 	slog    logback.Logger
 	client  opurl.Client
@@ -77,15 +77,15 @@ type minionHub struct {
 	stream  netutil.Streamer
 }
 
-func (hub *minionHub) Hide() dialmgt.Hide {
+func (hub *minionHub) Hide() telmgt.Hide {
 	return hub.link.Hide()
 }
 
-func (hub *minionHub) Ident() dialmgt.Ident {
+func (hub *minionHub) Ident() telmgt.Ident {
 	return hub.link.Ident()
 }
 
-func (hub *minionHub) Issue() dialmgt.Issue {
+func (hub *minionHub) Issue() telmgt.Issue {
 	return hub.link.Issue()
 }
 
@@ -223,15 +223,15 @@ func (hub *minionHub) ResetDB() error {
 		Error
 }
 
-func (hub *minionHub) BrkHide() dialmgt.Hide {
+func (hub *minionHub) BrkHide() telmgt.Hide {
 	return hub.link.Hide()
 }
 
-func (hub *minionHub) BrkIdent() dialmgt.Ident {
+func (hub *minionHub) BrkIdent() telmgt.Ident {
 	return hub.link.Ident()
 }
 
-func (hub *minionHub) BrkIssue() dialmgt.Issue {
+func (hub *minionHub) BrkIssue() telmgt.Issue {
 	return hub.link.Issue()
 }
 

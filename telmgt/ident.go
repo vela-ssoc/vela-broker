@@ -1,4 +1,4 @@
-package dialmgt
+package telmgt
 
 import (
 	"encoding/json"

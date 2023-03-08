@@ -5,12 +5,12 @@ import (
 	"os"
 
 	"github.com/vela-ssoc/backend-common/logback"
-	"github.com/vela-ssoc/vela-broker/brkapi"
-	"github.com/vela-ssoc/vela-broker/dialmgt"
 	"github.com/vela-ssoc/vela-broker/infra/bootstrap"
-	"github.com/vela-ssoc/vela-broker/lisapi"
 	"github.com/vela-ssoc/vela-broker/mlink"
-	"github.com/vela-ssoc/vela-broker/monapi"
+	"github.com/vela-ssoc/vela-broker/restapi/agtsrv"
+	"github.com/vela-ssoc/vela-broker/restapi/listen"
+	"github.com/vela-ssoc/vela-broker/restapi/mgtcli"
+	"github.com/vela-ssoc/vela-broker/telmgt"
 	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -18,13 +18,13 @@ import (
 
 // Run 运行服务
 func Run(parent context.Context, cfg string, slog logback.Logger) error {
-	var hide dialmgt.Hide
+	var hide telmgt.Hide
 	if err := bootstrap.AutoLoad(cfg, os.Args[0], &hide); err != nil {
 		return err
 	}
 
 	// 与中心端建立连接
-	link, err := dialmgt.Dial(parent, hide, slog)
+	link, err := telmgt.Dial(parent, hide, slog)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 	rawDB.SetConnMaxLifetime(dbCfg.MaxLifeTime)
 	rawDB.SetConnMaxIdleTime(dbCfg.MaxIdleTime)
 
-	mon := monapi.Handler(db, link, slog)
+	mon := agtsrv.Handler(db, link, slog)
 	hub := mlink.Hub(db, link, mon, slog)
 	gateway := mlink.Gateway(hub)
 	_ = hub.ResetDB()
@@ -59,12 +59,13 @@ func Run(parent context.Context, cfg string, slog logback.Logger) error {
 	errCh := make(chan error, 1)
 
 	// 监听本地端口用于 minion 节点连接
-	local := lisapi.Handler(gateway, hub, slog)
-	ds := &daemonServer{listen: issue.Listen, handler: local, errCh: errCh}
+	node := hub.NodeName()
+	lis := listen.Handler(gateway, node, slog)
+	ds := &daemonServer{listen: issue.Listen, handler: lis, errCh: errCh}
 	go ds.Run()
 
 	// 连接 manager 的客户端，保持在线与接受指令
-	suborder := brkapi.Handler(hub, slog)
+	suborder := mgtcli.Handler(hub, slog)
 	dc := &daemonClient{link: link, handler: suborder, errCh: errCh, slog: slog, parent: parent}
 	go dc.Run()
 

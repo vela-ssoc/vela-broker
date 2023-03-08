@@ -6,14 +6,14 @@ import (
 	"net/http"
 
 	"github.com/vela-ssoc/backend-common/logback"
-	"github.com/vela-ssoc/vela-broker/dialmgt"
+	"github.com/vela-ssoc/vela-broker/telmgt"
 )
 
 type daemonServer struct {
-	listen  dialmgt.Listen // 服务监听配置
-	handler http.Handler   // handler
-	server  *http.Server   // HTTP 服务
-	errCh   chan<- error   // 错误输出
+	listen  telmgt.Listen // 服务监听配置
+	handler http.Handler  // handler
+	server  *http.Server  // HTTP 服务
+	errCh   chan<- error  // 错误输出
 }
 
 func (ds *daemonServer) Run() {
@@ -45,7 +45,7 @@ func (ds *daemonServer) Close() error {
 }
 
 type daemonClient struct {
-	link    dialmgt.Linker
+	link    telmgt.Linker
 	handler http.Handler
 	server  *http.Server
 	errCh   chan<- error
