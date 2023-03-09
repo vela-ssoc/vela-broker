@@ -7,7 +7,7 @@ import (
 	"syscall"
 
 	"github.com/vela-ssoc/backend-common/logback"
-	"github.com/vela-ssoc/vela-broker/infra/banner"
+	"github.com/vela-ssoc/vela-broker/banner"
 	"github.com/vela-ssoc/vela-broker/launch"
 )
 
